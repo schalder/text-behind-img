@@ -11,7 +11,7 @@ st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
 # Sidebar upload/download instructions
 st.sidebar.write("## Upload and download :gear:")
 
-MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB max file size
+MAX_FILE_SIZE = 15 * 1024 * 1024  # 5MB max file size
 
 # Function to convert an image to bytes for download
 def convert_image(img):
@@ -107,7 +107,7 @@ my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpe
 # Sidebar customization options
 st.sidebar.write("### Customize Your Text")
 custom_text = st.sidebar.text_input("Enter your text", "Your Custom Text")
-font_size = st.sidebar.slider("Font Size", 10, 200, 50)  # Increased range
+font_size = st.sidebar.slider("Font Size", 10, 400, 50)  # Increased range
 font_color = st.sidebar.color_picker("Font Color", "#FFFFFF")
 font_family = st.sidebar.selectbox("Font Family", ["Arial", "Times New Roman", "Georgia", "Comic Sans MS"])  # Add Google fonts dynamically here
 font_weight = st.sidebar.slider("Font Weight", 100, 900, 400)
