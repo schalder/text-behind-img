@@ -10,7 +10,7 @@ st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
 # Sidebar upload/download instructions
 st.sidebar.write("## Upload and download :gear:")
 
-MAX_FILE_SIZE = 200 * 1024 * 1024  # 200MB max file size
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB max file size
 
 # Ensure the fonts folder exists
 FONTS_FOLDER = "fonts"
