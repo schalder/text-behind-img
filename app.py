@@ -21,7 +21,7 @@ def convert_image(img):
 
 
 # Function to process the uploaded image
-def process_image(upload, custom_text, font_size, font_color, x_position, y_position):
+def process_image(upload, custom_text, font_size, font_color, font_family, font_weight, rotation, x_position, y_position):
     # Load the uploaded image
     image = Image.open(upload).convert("RGBA")
 
@@ -43,19 +43,27 @@ def process_image(upload, custom_text, font_size, font_color, x_position, y_posi
     text_layer = Image.new("RGBA", background_image.size, (255, 255, 255, 0))
     draw = ImageDraw.Draw(text_layer)
 
-    # Set font (you can include a custom font in your directory)
+    # Set font (use the provided font family or default if unavailable)
     try:
-        font = ImageFont.truetype("arial.ttf", font_size)
+        font_path = os.path.join("fonts", f"{font_family}.ttf")
+        font = ImageFont.truetype(font_path, font_size, weight=str(font_weight))
     except:
         font = ImageFont.load_default()
 
-    # Add text to the middle of the canvas (adjust with sliders)
+    # Rotate text before adding to the layer
+    text_img = Image.new("RGBA", text_layer.size, (255, 255, 255, 0))
+    text_draw = ImageDraw.Draw(text_img)
+
+    # Calculate text position
     text_x = (background_image.width / 2) + x_position
     text_y = (background_image.height / 2) + y_position
-    draw.text((text_x, text_y), custom_text, fill=font_color, font=font, anchor="mm")
+
+    # Add text to the rotated layer
+    text_draw.text((text_x, text_y), custom_text, fill=font_color, font=font, anchor="mm")
+    rotated_text_img = text_img.rotate(rotation, resample=Image.BICUBIC, center=(text_x, text_y))
 
     # Merge the layers: Background + Text + Subject
-    combined = Image.alpha_composite(background_image.convert("RGBA"), text_layer)
+    combined = Image.alpha_composite(background_image.convert("RGBA"), rotated_text_img)
     combined = Image.alpha_composite(combined, subject_image.convert("RGBA"))
 
     # Display the final result
@@ -82,6 +90,9 @@ st.sidebar.write("### Customize Your Text")
 custom_text = st.sidebar.text_input("Enter your text", "Your Custom Text")
 font_size = st.sidebar.slider("Font Size", 10, 200, 50)
 font_color = st.sidebar.color_picker("Font Color", "#FFFFFF")
+font_family = st.sidebar.selectbox("Font Family", ["Arial", "Times New Roman", "Georgia", "Comic Sans MS"])
+font_weight = st.sidebar.slider("Font Weight", 100, 900, 400)
+rotation = st.sidebar.slider("Rotate Text", 0, 360, 0)
 x_position = st.sidebar.slider("X Position", -200, 200, 0)
 y_position = st.sidebar.slider("Y Position", -200, 200, 0)
 
@@ -95,6 +106,9 @@ if my_upload is not None:
             custom_text=custom_text,
             font_size=font_size,
             font_color=font_color,
+            font_family=font_family,
+            font_weight=font_weight,
+            rotation=rotation,
             x_position=x_position,
             y_position=y_position,
         )
