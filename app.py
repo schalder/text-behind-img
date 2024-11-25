@@ -45,7 +45,7 @@ def process_image(upload, custom_text, font_size, font_color, font_family, font_
 
         # Add a download button for the removed background version
         col2.download_button(
-            "Download Subject (Foreground)",
+            "Download Image",
             convert_image(subject_image),
             "subject_foreground.png",
             "image/png",
