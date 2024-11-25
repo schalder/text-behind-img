@@ -2,7 +2,6 @@ import streamlit as st
 from rembg import remove
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
-import requests
 import os
 
 # Set up Streamlit page
@@ -21,22 +20,8 @@ def convert_image(img):
     return byte_im
 
 
-# Fetch Google Font as .ttf file
-def fetch_google_font(font_name):
-    url = f"https://fonts.google.com/download?family={font_name.replace(' ', '%20')}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        font_path = os.path.join("fonts", f"{font_name}.ttf")
-        with open(font_path, "wb") as f:
-            f.write(response.content)
-        return font_path
-    else:
-        st.warning(f"Could not load font: {font_name}. Using default font.")
-        return None
-
-
 # Function to process the uploaded image
-def process_image(upload, custom_text, font_size, font_color, font_family, font_weight, text_opacity, rotation, x_position, y_position):
+def process_image(upload, custom_text, font_size, font_color, font_family, text_opacity, rotation, x_position, y_position):
     # Load the uploaded image
     image = Image.open(upload).convert("RGBA")
 
@@ -58,18 +43,18 @@ def process_image(upload, custom_text, font_size, font_color, font_family, font_
     text_layer = Image.new("RGBA", background_image.size, (255, 255, 255, 0))
     draw = ImageDraw.Draw(text_layer)
 
-    # Fetch Google Font or use default font
-    font_path = fetch_google_font(font_family)
+    # Set font (use local fonts or default if unavailable)
+    font_path = os.path.join("fonts", f"{font_family}.ttf")
     try:
-        font = ImageFont.truetype(font_path, font_size) if font_path else ImageFont.load_default()
+        font = ImageFont.truetype(font_path, font_size)
     except:
         font = ImageFont.load_default()
 
     # Adjust font color with opacity
-    r, g, b = Image.new("RGBA", (1, 1)).convert("RGB").getdata()[0] if font_color else (255, 255, 255)
+    r, g, b = tuple(int(font_color[i:i+2], 16) for i in (1, 3, 5))  # Convert #RRGGBB to RGB
     font_color_with_opacity = (r, g, b, int(255 * text_opacity))
 
-    # Rotate text before adding to the layer
+    # Create a separate image for the text and rotate it around its center
     text_img = Image.new("RGBA", text_layer.size, (255, 255, 255, 0))
     text_draw = ImageDraw.Draw(text_img)
 
@@ -77,9 +62,9 @@ def process_image(upload, custom_text, font_size, font_color, font_family, font_
     text_x = (background_image.width / 2) + x_position
     text_y = (background_image.height / 2) + y_position
 
-    # Add text to the rotated layer
+    # Add text to the new layer
     text_draw.text((text_x, text_y), custom_text, fill=font_color_with_opacity, font=font, anchor="mm")
-    rotated_text_img = text_img.rotate(rotation, resample=Image.BICUBIC)
+    rotated_text_img = text_img.rotate(rotation, resample=Image.BICUBIC, center=(text_x, text_y))
 
     # Merge the layers: Background + Text + Subject
     combined = Image.alpha_composite(background_image.convert("RGBA"), rotated_text_img)
@@ -107,14 +92,19 @@ my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpe
 # Sidebar customization options
 st.sidebar.write("### Customize Your Text")
 custom_text = st.sidebar.text_input("Enter your text", "Your Custom Text")
-font_size = st.sidebar.slider("Font Size", 10, 200, 50)  # Increased range
-font_color = st.sidebar.color_picker("Font Color", "#FFFFFF")
-font_family = st.sidebar.selectbox("Font Family", ["Arial", "Times New Roman", "Georgia", "Comic Sans MS"])  # Add Google fonts dynamically here
-font_weight = st.sidebar.slider("Font Weight", 100, 900, 400)
-text_opacity = st.sidebar.slider("Text Opacity", 0.1, 1.0, 1.0, step=0.1)  # New text opacity slider
-rotation = st.sidebar.slider("Rotate Text", 0, 360, 0)
-x_position = st.sidebar.slider("X Position", -400, 400, 0)  # Default 0, extended range
-y_position = st.sidebar.slider("Y Position", -400, 400, 0)  # Default 0, extended range
+font_size = st.sidebar.slider("Font Size", 10, 200, 50)  # Adjust font size
+font_color = st.sidebar.color_picker("Font Color", "#FFFFFF")  # Color picker for text
+text_opacity = st.sidebar.slider("Text Opacity", 0.1, 1.0, 1.0, step=0.1)  # Text opacity slider
+rotation = st.sidebar.slider("Rotate Text", 0, 360, 0)  # Rotate text around center
+x_position = st.sidebar.slider("X Position", -400, 400, 0)  # Extended range for X position
+y_position = st.sidebar.slider("Y Position", -400, 400, 0)  # Extended range for Y position
+
+# Google Fonts dropdown (optional)
+st.sidebar.write("### Font Selection")
+font_family = st.sidebar.selectbox(
+    "Font Family",
+    ["Arial", "Times New Roman", "Georgia", "Comic Sans MS"]
+)
 
 # Process the uploaded image
 if my_upload is not None:
@@ -127,7 +117,6 @@ if my_upload is not None:
             font_size=font_size,
             font_color=font_color,
             font_family=font_family,
-            font_weight=font_weight,
             text_opacity=text_opacity,
             rotation=rotation,
             x_position=x_position,
