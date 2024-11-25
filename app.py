@@ -2,6 +2,7 @@ import streamlit as st
 from rembg import remove
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
+import requests
 import os
 
 # Set up Streamlit page
@@ -18,6 +19,20 @@ def convert_image(img):
     img.save(buf, format="PNG")
     byte_im = buf.getvalue()
     return byte_im
+
+
+# Function to fetch Google Fonts dynamically
+def fetch_google_font(font_name, font_weight):
+    google_fonts_url = f"https://fonts.google.com/download?family={font_name.replace(' ', '%20')}&wght={font_weight}"
+    response = requests.get(google_fonts_url)
+    if response.status_code == 200:
+        font_path = f"./{font_name.replace(' ', '_')}_{font_weight}.ttf"
+        with open(font_path, "wb") as f:
+            f.write(response.content)
+        return font_path
+    else:
+        st.warning(f"Could not load font: {font_name}. Using default font.")
+        return None
 
 
 # Function to process the uploaded image
@@ -43,12 +58,11 @@ def process_image(upload, custom_text, font_size, font_color, font_family, font_
     text_layer = Image.new("RGBA", background_image.size, (255, 255, 255, 0))
     draw = ImageDraw.Draw(text_layer)
 
-    # Set font using uploaded fonts in the `fonts` folder
-    font_path = os.path.join("fonts", f"{font_family}.ttf")
+    # Fetch Google Font dynamically or use default font
+    font_path = fetch_google_font(font_family, font_weight)
     try:
-        font = ImageFont.truetype(font_path, font_size)
-    except Exception as e:
-        st.warning(f"Could not load font: {font_family}. Using default font.")
+        font = ImageFont.truetype(font_path, font_size) if font_path else ImageFont.load_default()
+    except:
         font = ImageFont.load_default()
 
     # Adjust font color with opacity
@@ -92,20 +106,21 @@ my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpe
 
 # Sidebar customization options
 st.sidebar.write("### Customize Your Text")
-
-# Updated arrangement for text customization
 custom_text = st.sidebar.text_input("Enter your text", "Your Custom Text")
-font_family = st.sidebar.selectbox(
-    "Font Family",
-    [f.replace(".ttf", "") for f in os.listdir("fonts") if f.endswith(".ttf")],
-)
 font_size = st.sidebar.slider("Font Size", 10, 200, 50)  # Adjust font size
-font_weight = st.sidebar.slider("Font Weight (Thin to Bold)", 100, 900, 400)  # Font weight slider (placeholder)
 font_color = st.sidebar.color_picker("Font Color", "#FFFFFF")  # Color picker for text
 text_opacity = st.sidebar.slider("Text Opacity", 0.1, 1.0, 1.0, step=0.1)  # Text opacity slider
 rotation = st.sidebar.slider("Rotate Text", 0, 360, 0)  # Rotate text around center
 x_position = st.sidebar.slider("X Position", -400, 400, 0)  # Extended range for X position
 y_position = st.sidebar.slider("Y Position", -400, 400, 0)  # Extended range for Y position
+
+# Google Fonts dropdown
+st.sidebar.write("### Font Selection")
+font_family = st.sidebar.selectbox(
+    "Font Family",
+    ["Arial", "Roboto", "Lobster", "Open Sans", "Montserrat", "Comic Sans MS"]
+)
+font_weight = st.sidebar.slider("Font Weight (Thin to Bold)", 100, 900, 400)  # Add font weight customization
 
 # Process the uploaded image
 if my_upload is not None:
@@ -118,7 +133,7 @@ if my_upload is not None:
             font_size=font_size,
             font_color=font_color,
             font_family=font_family,
-            font_weight=font_weight,  # Font weight is passed for future use
+            font_weight=font_weight,
             text_opacity=text_opacity,
             rotation=rotation,
             x_position=x_position,
