@@ -92,20 +92,24 @@ my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpe
 
 # Sidebar customization options
 st.sidebar.write("### Customize Your Text")
-
-# Updated arrangement for text customization
 custom_text = st.sidebar.text_input("Enter your text", "Your Custom Text")
-font_family = st.sidebar.selectbox(
-    "Font Family",
-    [f.replace(".ttf", "") for f in os.listdir("fonts") if f.endswith(".ttf")],
-)
 font_size = st.sidebar.slider("Font Size", 10, 200, 50)  # Adjust font size
-font_weight = st.sidebar.slider("Font Weight (Thin to Bold)", 100, 900, 400)  # Font weight slider (placeholder)
 font_color = st.sidebar.color_picker("Font Color", "#FFFFFF")  # Color picker for text
 text_opacity = st.sidebar.slider("Text Opacity", 0.1, 1.0, 1.0, step=0.1)  # Text opacity slider
 rotation = st.sidebar.slider("Rotate Text", 0, 360, 0)  # Rotate text around center
 x_position = st.sidebar.slider("X Position", -400, 400, 0)  # Extended range for X position
 y_position = st.sidebar.slider("Y Position", -400, 400, 0)  # Extended range for Y position
+
+# Font family dropdown menu (list all uploaded fonts)
+st.sidebar.write("### Font Selection")
+font_folder = "fonts"  # Folder containing uploaded font files
+uploaded_fonts = [f.replace(".ttf", "") for f in os.listdir(font_folder) if f.endswith(".ttf")]
+if uploaded_fonts:
+    font_family = st.sidebar.selectbox("Font Family", uploaded_fonts)
+else:
+    st.error("No fonts found in the 'fonts' folder. Please upload .ttf font files.")
+
+font_weight = st.sidebar.slider("Font Weight (Boldness)", 100, 900, 400)  # Font weight slider (placeholder)
 
 # Process the uploaded image
 if my_upload is not None:
