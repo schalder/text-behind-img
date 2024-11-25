@@ -1,4 +1,6 @@
 streamlit
 rembg
 pillow
-onnxruntime  # For CPU-based inference
+onnxruntime
+numpy
+requests
