@@ -19,9 +19,9 @@ if not os.path.exists(FONTS_FOLDER):
 
 
 # Function to convert an image to bytes for download
-def convert_image(img):
+def convert_image(img, format="PNG"):
     buf = BytesIO()
-    img.save(buf, format="PNG")
+    img.save(buf, format=format)
     byte_im = buf.getvalue()
     return byte_im
 
@@ -42,6 +42,14 @@ def process_image(upload, custom_text, font_size, font_color, font_family, font_
 
         col2.write("Subject (Foreground) :bust_in_silhouette:")
         col2.image(subject_image, use_column_width=True)
+
+        # Add a download button for the removed background version
+        col2.download_button(
+            "Download Subject (Foreground)",
+            convert_image(subject_image),
+            "subject_foreground.png",
+            "image/png",
+        )
 
         col3.write("Background Layer :art:")
         col3.image(background_image, use_column_width=True)
