@@ -109,7 +109,7 @@ font_family = st.sidebar.selectbox(
     [f.replace(".ttf", "") for f in os.listdir(FONTS_FOLDER) if f.endswith(".ttf")],
     help="Upload .ttf fonts to the 'fonts' folder in your project directory.",
 )
-font_size = st.sidebar.slider("Font Size", 10, 200, 50)  # Adjust font size
+font_size = st.sidebar.slider("Font Size", 10, 400, 150)  # Adjust font size
 font_weight = st.sidebar.slider("Font Weight (Thin to Bold)", 100, 900, 400)  # Font weight slider (placeholder)
 font_color = st.sidebar.color_picker("Font Color", "#FFFFFF")  # Color picker for text
 text_opacity = st.sidebar.slider("Text Opacity", 0.1, 1.0, 1.0, step=0.1)  # Text opacity slider
