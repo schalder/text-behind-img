@@ -17,7 +17,7 @@ def load_font(font_path, font_size):
     return ImageFont.truetype(font_path, font_size)
 
 def optimize_image(image, max_size=(1024, 1024)):
-    image.thumbnail(max_size, Image.ANTIALIAS)
+    image.thumbnail(max_size, Image.Resampling.LANCZOS)
     return image
 
 def remove_background(image):
