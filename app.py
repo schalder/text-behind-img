@@ -34,28 +34,9 @@ def process_image(upload, custom_text, font_size, font_color, font_family, font_
 
         # Split subject and background using rembg
         subject_image = remove(image)
-        background_image = image
-
-        # Display the original image and processed layers
-        col1.write("Original Image :camera:")
-        col1.image(image, use_column_width=True)
-
-        col2.write("Subject (Foreground) :bust_in_silhouette:")
-        col2.image(subject_image, use_column_width=True)
-
-        # Add a download button for the removed background version
-        col2.download_button(
-            "Download Image",
-            convert_image(subject_image),
-            "subject_foreground.png",
-            "image/png",
-        )
-
-        col3.write("Background Layer :art:")
-        col3.image(background_image, use_column_width=True)
 
         # Add custom text between subject and background
-        text_layer = Image.new("RGBA", background_image.size, (255, 255, 255, 0))
+        text_layer = Image.new("RGBA", image.size, (255, 255, 255, 0))
         draw = ImageDraw.Draw(text_layer)
 
         # Set font using uploaded fonts in the `fonts` folder
@@ -75,19 +56,19 @@ def process_image(upload, custom_text, font_size, font_color, font_family, font_
         text_draw = ImageDraw.Draw(text_img)
 
         # Calculate text position
-        text_x = (background_image.width / 2) + x_position
-        text_y = (background_image.height / 2) + y_position
+        text_x = (image.width / 2) + x_position
+        text_y = (image.height / 2) + y_position
 
         # Add text to the new layer
         text_draw.text((text_x, text_y), custom_text, fill=font_color_with_opacity, font=font, anchor="mm")
         rotated_text_img = text_img.rotate(rotation, resample=Image.BICUBIC, center=(text_x, text_y))
 
         # Merge the layers: Background + Text + Subject
-        combined = Image.alpha_composite(background_image.convert("RGBA"), rotated_text_img)
+        combined = Image.alpha_composite(image.convert("RGBA"), rotated_text_img)
         combined = Image.alpha_composite(combined, subject_image.convert("RGBA"))
 
         # Display the final result
-        st.write("Final Image with Text :pencil:")
+        st.write("## Final Image with Text 📝")
         st.image(combined, use_column_width=True)
 
         # Add download button for the final image
@@ -97,12 +78,27 @@ def process_image(upload, custom_text, font_size, font_color, font_family, font_
             "final_image.png",
             "image/png",
         )
+
+        # Two-column layout for Original Image and Subject (Foreground)
+        col1, col2 = st.columns(2)
+
+        # Original Image
+        col1.write("### Original Image 📷")
+        col1.image(image, use_column_width=True)
+
+        # Subject (Foreground) renamed to "Background Removed Image"
+        col2.write("### Background Removed Image 👤")
+        col2.image(subject_image, use_column_width=True)
+        col2.download_button(
+            "Download Image",
+            convert_image(subject_image),
+            "background_removed.png",
+            "image/png",
+        )
+
     except Exception as e:
         st.error(f"An error occurred while processing the image: {str(e)}")
 
-
-# Layout: Three columns for display
-col1, col2, col3 = st.columns(3)
 
 # File upload in the sidebar
 my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
