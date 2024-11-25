@@ -1,8 +1,8 @@
 import streamlit as st
-from rembg import remove
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import os
+import requests
 
 # Set up Streamlit page
 st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
@@ -12,21 +12,30 @@ st.sidebar.write("## Upload and download :gear:")
 
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB max file size
 
-# Function to convert an image to bytes for download
-def convert_image(img):
-    buf = BytesIO()
-    img.save(buf, format="PNG")
-    byte_im = buf.getvalue()
-    return byte_im
+@st.cache_data
+def load_font(font_path, font_size):
+    return ImageFont.truetype(font_path, font_size)
 
+def optimize_image(image, max_size=(1024, 1024)):
+    image.thumbnail(max_size, Image.ANTIALIAS)
+    return image
+
+def remove_background(image):
+    endpoint = "http://localhost:5000"  # Rembg server URL
+    with BytesIO() as img_byte_arr:
+        image.save(img_byte_arr, format="PNG")
+        img_byte_arr.seek(0)
+        response = requests.post(endpoint, files={"image": img_byte_arr})
+        return Image.open(BytesIO(response.content))
 
 # Function to process the uploaded image
 def process_image(upload, custom_text, font_size, font_color, font_family, font_weight, text_opacity, rotation, x_position, y_position):
     # Load the uploaded image
     image = Image.open(upload).convert("RGBA")
+    image = optimize_image(image)
 
-    # Split subject and background using rembg
-    subject_image = remove(image)
+    # Split subject and background using rembg server
+    subject_image = remove_background(image)
     background_image = image
 
     # Display the original image and processed layers
@@ -43,13 +52,9 @@ def process_image(upload, custom_text, font_size, font_color, font_family, font_
     text_layer = Image.new("RGBA", background_image.size, (255, 255, 255, 0))
     draw = ImageDraw.Draw(text_layer)
 
-    # Set font using uploaded fonts in the `fonts` folder
+    # Load font
     font_path = os.path.join("fonts", f"{font_family}.ttf")
-    try:
-        font = ImageFont.truetype(font_path, font_size)
-    except Exception as e:
-        st.warning(f"Could not load font: {font_family}. Using default font.")
-        font = ImageFont.load_default()
+    font = load_font(font_path, font_size)
 
     # Adjust font color with opacity
     r, g, b = tuple(int(font_color[i:i+2], 16) for i in (1, 3, 5))  # Convert #RRGGBB to RGB
@@ -92,20 +97,17 @@ my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpe
 
 # Sidebar customization options
 st.sidebar.write("### Customize Your Text")
-
-# Updated arrangement for text customization
 custom_text = st.sidebar.text_input("Enter your text", "Your Custom Text")
 font_family = st.sidebar.selectbox(
     "Font Family",
     [f.replace(".ttf", "") for f in os.listdir("fonts") if f.endswith(".ttf")],
 )
-font_size = st.sidebar.slider("Font Size", 10, 200, 50)  # Adjust font size
-font_weight = st.sidebar.slider("Font Weight (Thin to Bold)", 100, 900, 400)  # Font weight slider (placeholder)
-font_color = st.sidebar.color_picker("Font Color", "#FFFFFF")  # Color picker for text
-text_opacity = st.sidebar.slider("Text Opacity", 0.1, 1.0, 1.0, step=0.1)  # Text opacity slider
-rotation = st.sidebar.slider("Rotate Text", 0, 360, 0)  # Rotate text around center
-x_position = st.sidebar.slider("X Position", -400, 400, 0)  # Extended range for X position
-y_position = st.sidebar.slider("Y Position", -400, 400, 0)  # Extended range for Y position
+font_size = st.sidebar.slider("Font Size", 10, 200, 50)
+font_color = st.sidebar.color_picker("Font Color", "#FFFFFF")
+text_opacity = st.sidebar.slider("Text Opacity", 0.1, 1.0, 1.0, step=0.1)
+rotation = st.sidebar.slider("Rotate Text", 0, 360, 0)
+x_position = st.sidebar.slider("X Position", -400, 400, 0)
+y_position = st.sidebar.slider("Y Position", -400, 400, 0)
 
 # Process the uploaded image
 if my_upload is not None:
@@ -118,7 +120,7 @@ if my_upload is not None:
             font_size=font_size,
             font_color=font_color,
             font_family=font_family,
-            font_weight=font_weight,  # Font weight is passed for future use
+            font_weight=400,  # Placeholder for font weight
             text_opacity=text_opacity,
             rotation=rotation,
             x_position=x_position,
