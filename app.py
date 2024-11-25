@@ -46,8 +46,9 @@ def process_image(upload, custom_text, font_size, font_color, font_family, font_
     # Set font (use the provided font family or default if unavailable)
     try:
         font_path = os.path.join("fonts", f"{font_family}.ttf")
-        font = ImageFont.truetype(font_path, font_size, weight=str(font_weight))
-    except:
+        font = ImageFont.truetype(font_path, font_size)
+    except Exception as e:
+        st.error(f"Font error: {e}")
         font = ImageFont.load_default()
 
     # Rotate text before adding to the layer
@@ -60,7 +61,7 @@ def process_image(upload, custom_text, font_size, font_color, font_family, font_
 
     # Add text to the rotated layer
     text_draw.text((text_x, text_y), custom_text, fill=font_color, font=font, anchor="mm")
-    rotated_text_img = text_img.rotate(rotation, resample=Image.BICUBIC, center=(text_x, text_y))
+    rotated_text_img = text_img.rotate(rotation, resample=Image.BICUBIC)
 
     # Merge the layers: Background + Text + Subject
     combined = Image.alpha_composite(background_image.convert("RGBA"), rotated_text_img)
@@ -88,13 +89,13 @@ my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpe
 # Sidebar customization options
 st.sidebar.write("### Customize Your Text")
 custom_text = st.sidebar.text_input("Enter your text", "Your Custom Text")
-font_size = st.sidebar.slider("Font Size", 10, 200, 50)
+font_size = st.sidebar.slider("Font Size", 10, 200, 50)  # Increased range
 font_color = st.sidebar.color_picker("Font Color", "#FFFFFF")
 font_family = st.sidebar.selectbox("Font Family", ["Arial", "Times New Roman", "Georgia", "Comic Sans MS"])
 font_weight = st.sidebar.slider("Font Weight", 100, 900, 400)
 rotation = st.sidebar.slider("Rotate Text", 0, 360, 0)
-x_position = st.sidebar.slider("X Position", -200, 200, 0)
-y_position = st.sidebar.slider("Y Position", -200, 200, 0)
+x_position = st.sidebar.slider("X Position", -400, 400, 0)  # Default 0, extended range
+y_position = st.sidebar.slider("Y Position", -400, 400, 0)  # Default 0, extended range
 
 # Process the uploaded image
 if my_upload is not None:
