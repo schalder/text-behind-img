@@ -12,6 +12,10 @@ LOGIN_URL = "https://app.ghlsaaskits.com/text-behind-img/login.php"
 # Set up Streamlit page
 st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
 
+# Logging for Debugging
+def log_message(message):
+    st.write(f"**Debug:** {message}")
+
 # Sidebar upload/download instructions
 st.sidebar.write("## Upload and download :gear:")
 
@@ -34,15 +38,16 @@ def convert_image(img, format="PNG"):
 # Function to validate session using the token from the URL
 def validate_session(token):
     try:
-        # Make a request to the PHP backend to validate the session
+        log_message(f"Validating token: {token}")
         response = requests.get(CHECK_SESSION_URL, params={"token": token})
+        log_message(f"Response from backend: {response.status_code}, {response.text}")
         if response.status_code == 200:
             user_data = response.json()
             if "error" not in user_data:
                 return user_data
         return None
     except Exception as e:
-        st.error("Error validating session. Please log in again.")
+        st.error(f"Error validating session: {e}")
         return None
 
 
@@ -132,7 +137,7 @@ def process_image(upload, text_sets):
         col2.download_button("Download Removed Background", convert_image(subject_image), "background_removed.png", "image/png")
 
     except Exception as e:
-        st.error(f"An error occurred while processing the image: {str(e)}")
+        st.error(f"An error occurred while processing the image: {e}")
 
 
 # Get token from the URL
@@ -142,14 +147,12 @@ token = query_params.get("token", [None])[0]
 if not token:
     # If no token, redirect to login page
     st.error("You are not logged in. Redirecting to login...")
-    st.experimental_set_query_params()  # Clear parameters
     st.stop()
 
 # Validate session with the backend
 user_data = validate_session(token)
 if not user_data:
     st.error("Session expired or invalid. Please log in again.")
-    st.experimental_set_query_params()  # Clear parameters
     st.stop()
 
 # Display user information and logout option
@@ -206,8 +209,7 @@ for i, text_set in enumerate(st.session_state.text_sets):
         text_set["x_position"] = st.slider(f"X Position {i + 1}", -400, 400, text_set["x_position"], key=f"x_position_{i}")
         text_set["y_position"] = st.slider(f"Y Position {i + 1}", -400, 400, text_set["y_position"], key=f"y_position_{i}")
 
-# Process uploaded image
-if my_upload is not None:
+if my_upload:
     if my_upload.size > MAX_FILE_SIZE:
         st.error("The uploaded file is too large. Please upload an image smaller than 5MB.")
     else:
