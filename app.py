@@ -25,12 +25,16 @@ if not os.path.exists(FONTS_FOLDER):
 
 # Function to validate session using the token
 def validate_session():
-    token = st.experimental_get_query_params().get("token", [None])[0]
+    # Extract the token from the URL query parameters
+    query_params = st.experimental_get_query_params()
+    token = query_params.get("token", [None])[0]
+
     if not token:
         st.warning("No token found. Redirecting to login...")
         st.experimental_set_query_params()  # Clear query params
         st.stop()
 
+    # Make a request to the backend to validate the session
     response = requests.get(CHECK_SESSION_URL, params={"token": token})
     if response.status_code == 200:
         user_data = response.json()
@@ -39,7 +43,7 @@ def validate_session():
     else:
         st.error("Unauthorized. Please log in.")
         st.experimental_set_query_params()  # Clear query params
-        st.stop()
+        st.experimental_rerun()
 
 
 # Function to convert an image to bytes for download
@@ -140,9 +144,7 @@ def process_image(upload, text_sets):
         col2.image(subject_image, use_column_width=True)
         col2.download_button(
             "Download Removed Background",
-            convert_image(subject_image),
-            "background_removed.png",
-            "image/png",
+            convert_image(subject_image), "background_removed.png", "image/png"
         )
 
     except Exception as e:
@@ -207,7 +209,9 @@ for i, text_set in enumerate(st.session_state.text_sets):
         text_set["font_color"] = st.color_picker(f"Font Color {i + 1}", text_set["font_color"], key=f"font_color_{i}")
         text_set["font_stroke"] = st.slider(f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}")
         text_set["stroke_color"] = st.color_picker(f"Stroke Color {i + 1}", text_set["stroke_color"], key=f"stroke_color_{i}")
-        text_set["text_opacity"] = st.slider(f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], key=f"text_opacity_{i}")
+        text_set["text_opacity"] = st.slider(
+            f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}"
+        )
         text_set["rotation"] = st.slider(f"Rotate Text {i + 1}", 0, 360, text_set["rotation"], key=f"rotation_{i}")
         text_set["x_position"] = st.slider(f"X Position {i + 1}", -400, 400, text_set["x_position"], key=f"x_position_{i}")
         text_set["y_position"] = st.slider(f"Y Position {i + 1}", -400, 400, text_set["y_position"], key=f"y_position_{i}")
