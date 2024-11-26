@@ -23,35 +23,27 @@ if not os.path.exists(FONTS_FOLDER):
     os.makedirs(FONTS_FOLDER)
 
 
-# Function to validate session using the token
-def validate_session():
-    # Extract the token from the URL query parameters
-    query_params = st.experimental_get_query_params()
-    token = query_params.get("token", [None])[0]
-
-    if not token:
-        st.warning("No token found. Redirecting to login...")
-        st.experimental_set_query_params()  # Clear query params
-        st.stop()
-
-    # Make a request to the backend to validate the session
-    response = requests.get(CHECK_SESSION_URL, params={"token": token})
-    if response.status_code == 200:
-        user_data = response.json()
-        st.session_state.user_data = user_data
-        st.session_state.token = token
-    else:
-        st.error("Unauthorized. Please log in.")
-        st.experimental_set_query_params()  # Clear query params
-        st.experimental_rerun()
-
-
 # Function to convert an image to bytes for download
 def convert_image(img, format="PNG"):
     buf = BytesIO()
     img.save(buf, format=format)
     byte_im = buf.getvalue()
     return byte_im
+
+
+# Function to validate session using the token from the URL
+def validate_session(token):
+    try:
+        # Make a request to the PHP backend to validate the session
+        response = requests.get(CHECK_SESSION_URL, params={"token": token})
+        if response.status_code == 200:
+            user_data = response.json()
+            if "error" not in user_data:
+                return user_data
+        return None
+    except Exception as e:
+        st.error("Error validating session. Please log in again.")
+        return None
 
 
 # Function to create grayscale background while keeping the subject colored
@@ -133,44 +125,43 @@ def process_image(upload, text_sets):
         col1, col2 = st.columns(2)
         col1.write("### Grayscale Background Image 🌑")
         col1.image(grayscale_with_subject, use_column_width=True)
-        col1.download_button(
-            "Download Grayscale Background",
-            convert_image(grayscale_with_subject),
-            "grayscale_with_subject.png",
-            "image/png",
-        )
+        col1.download_button("Download Grayscale Background", convert_image(grayscale_with_subject), "grayscale_with_subject.png", "image/png")
 
         col2.write("### Background Removed Image 👤")
         col2.image(subject_image, use_column_width=True)
-        col2.download_button(
-            "Download Removed Background",
-            convert_image(subject_image), "background_removed.png", "image/png"
-        )
+        col2.download_button("Download Removed Background", convert_image(subject_image), "background_removed.png", "image/png")
 
     except Exception as e:
         st.error(f"An error occurred while processing the image: {str(e)}")
 
 
-# Session Management
-if "user_data" not in st.session_state:
-    validate_session()
+# Get token from the URL
+query_params = st.experimental_get_query_params()
+token = query_params.get("token", [None])[0]
 
-user_data = st.session_state.user_data
+if not token:
+    # If no token, redirect to login page
+    st.error("You are not logged in. Redirecting to login...")
+    st.experimental_set_query_params()  # Clear parameters
+    st.stop()
 
-# Display user info and logout option
-st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['role']})")
+# Validate session with the backend
+user_data = validate_session(token)
+if not user_data:
+    st.error("Session expired or invalid. Please log in again.")
+    st.experimental_set_query_params()  # Clear parameters
+    st.stop()
+
+# Display user information and logout option
+st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['email']})")
 if st.sidebar.button("Logout"):
-    st.session_state.clear()
-    st.experimental_set_query_params()  # Clear query params
-    st.experimental_rerun()
+    st.experimental_set_query_params()  # Clear parameters
+    st.success("Logged out successfully! Redirecting...")
+    st.stop()
 
-# Apply role restrictions
-if user_data["role"] == "free":
-    st.warning("Free users are limited to generating 2 images.")
-elif user_data["role"] == "pro":
-    st.success("Welcome, Pro user! Enjoy unlimited access.")
-elif user_data["role"] == "admin":
-    st.success("Welcome, Admin! You have full access.")
+# Main app functionality
+st.title("Text Behind Image Editor")
+st.write(f"Welcome, **{user_data['name']}**!")
 
 # File upload
 my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
@@ -193,7 +184,6 @@ if "text_sets" not in st.session_state:
         }
     ]
 
-# Render text sets
 for i, text_set in enumerate(st.session_state.text_sets):
     with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
         text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}")
