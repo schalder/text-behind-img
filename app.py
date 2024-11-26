@@ -25,23 +25,28 @@ if not os.path.exists(FONTS_FOLDER):
 # Function to validate the user session using the API key
 def validate_user():
     # Extract the API key from the query parameter
-    api_key = st.experimental_get_query_params().get("api_key", [None])[0]
+    query_params = st.experimental_get_query_params()
+    api_key = query_params.get("api_key", [None])[0]
     
     if not api_key:
+        # No API key found, redirect to login
         redirect_to_login()
         st.stop()
 
     try:
+        # Validate API key with the backend
         response = requests.post(VALIDATE_API_URL, json={"api_key": api_key})
         
         if response.status_code == 200:
             user_data = response.json()
+            # Ensure all required fields are present
             required_fields = ["user_id", "name", "email", "role", "remaining_images"]
             if not all(field in user_data for field in required_fields):
                 st.error("Invalid response from the server. Missing required fields.")
                 st.stop()
             return user_data
         elif response.status_code == 401:
+            # Invalid API key, redirect to login
             redirect_to_login()
             st.stop()
         else:
@@ -53,10 +58,12 @@ def validate_user():
 
 # Function to redirect to the login page
 def redirect_to_login():
-    st.experimental_set_query_params()  # Clear API key from URL
+    # Clear query parameters (API key)
+    st.experimental_set_query_params()  # Clear any query params
+    
+    # Display a message and a login button
     st.markdown(f"""
-        <meta http-equiv="refresh" content="0; url={LOGIN_URL}">
-        <h4>Redirecting to the login page...</h4>
+        <h4>You have been logged out. Please log in again.</h4>
         <a href="{LOGIN_URL}" style="text-decoration: none;">
            <button style="
                padding: 10px 20px; 
@@ -74,9 +81,12 @@ def redirect_to_login():
 
 # Logout functionality
 def handle_logout():
-    st.session_state.clear()  # Clear session state
-    st.experimental_set_query_params()  # Clear query params (API key)
-    redirect_to_login()  # Redirect to the external login page
+    # Clear all session data
+    st.session_state.clear()
+    # Clear query parameters to prevent redirection loops
+    st.experimental_set_query_params()  # Clear API key from URL
+    # Redirect to login page
+    redirect_to_login()
 
 # Validate user session
 user_data = validate_user()
