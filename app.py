@@ -118,7 +118,7 @@ def process_image(upload, text_sets):
                 )
                 # Apply blur to the shadow
                 shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(radius=shadow_blur))
-                text_img = Image.alpha_composite(text_img, shadow_layer)
+                text_img = Image.alpha_composite(shadow_layer, text_img)
 
             # Add text with stroke
             text_draw.text(
@@ -255,16 +255,24 @@ for i, text_set in enumerate(st.session_state.text_sets):
         text_set["font_color"] = st.color_picker(f"Font Color {i + 1}", text_set["font_color"], key=f"font_color_{i}")
         text_set["font_stroke"] = st.slider(f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}")
         text_set["stroke_color"] = st.color_picker(f"Stroke Color {i + 1}", text_set["stroke_color"], key=f"stroke_color_{i}")
-        text_set["text_opacity"] = st.slider(f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}")
+        text_set["text_opacity"] = st.slider(
+            f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}"
+        )
         text_set["rotation"] = st.slider(f"Rotate Text {i + 1}", 0, 360, text_set["rotation"], key=f"rotation_{i}")
         text_set["x_position"] = st.slider(f"X Position {i + 1}", -400, 400, text_set["x_position"], key=f"x_position_{i}")
         text_set["y_position"] = st.slider(f"Y Position {i + 1}", -400, 400, text_set["y_position"], key=f"y_position_{i}")
-        text_set["text_transform"] = st.selectbox(f"Text Transform {i + 1}", ["none", "uppercase", "lowercase", "capitalize"], key=f"text_transform_{i}")
+        text_set["text_transform"] = st.selectbox(
+            f"Text Transform {i + 1}", ["none", "uppercase", "lowercase", "capitalize"], key=f"text_transform_{i}"
+        )
         text_set["shadow_enabled"] = st.checkbox(f"Enable Shadow {i + 1}", text_set["shadow_enabled"], key=f"shadow_enabled_{i}")
         if text_set["shadow_enabled"]:
             text_set["shadow_color"] = st.color_picker(f"Shadow Color {i + 1}", text_set["shadow_color"], key=f"shadow_color_{i}")
-            text_set["shadow_x_offset"] = st.slider(f"Shadow X Offset {i + 1}", -50, 50, text_set["shadow_x_offset"], key=f"shadow_x_offset_{i}")
-            text_set["shadow_y_offset"] = st.slider(f"Shadow Y Offset {i + 1}", -50, 50, text_set["shadow_y_offset"], key=f"shadow_y_offset_{i}")
+            text_set["shadow_x_offset"] = st.slider(
+                f"Shadow X Offset {i + 1}", -50, 50, text_set["shadow_x_offset"], key=f"shadow_x_offset_{i}"
+            )
+            text_set["shadow_y_offset"] = st.slider(
+                f"Shadow Y Offset {i + 1}", -50, 50, text_set["shadow_y_offset"], key=f"shadow_y_offset_{i}"
+            )
             text_set["shadow_blur"] = st.slider(f"Shadow Blur {i + 1}", 0, 20, text_set["shadow_blur"], key=f"shadow_blur_{i}")
 
 # Process the uploaded image
