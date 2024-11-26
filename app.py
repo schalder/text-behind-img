@@ -1,6 +1,6 @@
 import streamlit as st
 from rembg import remove
-from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageFilter
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 from io import BytesIO
 import os
 
@@ -67,11 +67,6 @@ def process_image(upload, text_sets):
             x_position = text_set["x_position"]
             y_position = text_set["y_position"]
             text_transform = text_set["text_transform"]
-            shadow_enabled = text_set["shadow_enabled"]
-            shadow_color = text_set["shadow_color"]
-            shadow_x_offset = text_set["shadow_x_offset"]
-            shadow_y_offset = text_set["shadow_y_offset"]
-            shadow_blur = text_set["shadow_blur"]
 
             # Transform text
             if text_transform == "uppercase":
@@ -97,28 +92,13 @@ def process_image(upload, text_sets):
             sr, sg, sb = tuple(int(stroke_color[i:i+2], 16) for i in (1, 3, 5))  # Convert #RRGGBB to RGB
             stroke_color_with_opacity = (sr, sg, sb, int(255 * text_opacity))
 
-            # Create a separate image for the text and apply effects
+            # Create a separate image for the text
             text_img = Image.new("RGBA", text_layer.size, (255, 255, 255, 0))
             text_draw = ImageDraw.Draw(text_img)
 
             # Calculate text position
             text_x = (original_image.width / 2) + x_position
             text_y = (original_image.height / 2) + y_position
-
-            # Apply shadow if enabled
-            if shadow_enabled:
-                shadow_layer = Image.new("RGBA", text_img.size, (255, 255, 255, 0))
-                shadow_draw = ImageDraw.Draw(shadow_layer)
-                shadow_draw.text(
-                    (text_x + shadow_x_offset, text_y + shadow_y_offset),
-                    custom_text,
-                    fill=shadow_color,
-                    font=font,
-                    anchor="mm",
-                )
-                # Apply blur to the shadow
-                shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(radius=shadow_blur))
-                text_img = Image.alpha_composite(shadow_layer, text_img)
 
             # Add text with stroke
             text_draw.text(
@@ -199,11 +179,6 @@ if "text_sets" not in st.session_state:
             "x_position": 0,
             "y_position": 0,
             "text_transform": "none",
-            "shadow_enabled": False,
-            "shadow_color": "#000000",
-            "shadow_x_offset": 5,
-            "shadow_y_offset": 5,
-            "shadow_blur": 5,
         }
     ]
 
@@ -222,11 +197,6 @@ def add_text_set():
             "x_position": 0,
             "y_position": 0,
             "text_transform": "none",
-            "shadow_enabled": False,
-            "shadow_color": "#000000",
-            "shadow_x_offset": 5,
-            "shadow_y_offset": 5,
-            "shadow_blur": 5,
         }
     )
 
@@ -264,16 +234,6 @@ for i, text_set in enumerate(st.session_state.text_sets):
         text_set["text_transform"] = st.selectbox(
             f"Text Transform {i + 1}", ["none", "uppercase", "lowercase", "capitalize"], key=f"text_transform_{i}"
         )
-        text_set["shadow_enabled"] = st.checkbox(f"Enable Shadow {i + 1}", text_set["shadow_enabled"], key=f"shadow_enabled_{i}")
-        if text_set["shadow_enabled"]:
-            text_set["shadow_color"] = st.color_picker(f"Shadow Color {i + 1}", text_set["shadow_color"], key=f"shadow_color_{i}")
-            text_set["shadow_x_offset"] = st.slider(
-                f"Shadow X Offset {i + 1}", -50, 50, text_set["shadow_x_offset"], key=f"shadow_x_offset_{i}"
-            )
-            text_set["shadow_y_offset"] = st.slider(
-                f"Shadow Y Offset {i + 1}", -50, 50, text_set["shadow_y_offset"], key=f"shadow_y_offset_{i}"
-            )
-            text_set["shadow_blur"] = st.slider(f"Shadow Blur {i + 1}", 0, 20, text_set["shadow_blur"], key=f"shadow_blur_{i}")
 
 # Process the uploaded image
 if my_upload is not None:
