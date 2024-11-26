@@ -70,6 +70,7 @@ def process_image(upload, text_sets):
             # Set font using uploaded fonts in the `fonts` folder
             font_path = os.path.join(FONTS_FOLDER, f"{font_family}.ttf")
             try:
+                # Load the appropriate font
                 font = ImageFont.truetype(font_path, font_size)
             except Exception:
                 st.warning(f"Could not load font: {font_family}. Using default font.")
