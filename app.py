@@ -34,6 +34,7 @@ def validate_user():
     api_key = st.experimental_get_query_params().get("api_key", [None])[0]  # Extract API key from URL
     if not api_key:
         st.warning("Missing API key. Redirecting to login...")
+        redirect_to_login()
         st.stop()
 
     try:
@@ -41,12 +42,24 @@ def validate_user():
         if response.status_code == 200:
             user_data = response.json()
             return user_data  # Valid user data
+        elif response.status_code == 401:
+            st.warning("Invalid or expired API key. Redirecting to login...")
+            redirect_to_login()
+            st.stop()
         else:
-            st.warning("Invalid session or API key. Redirecting to login...")
+            st.error("An unexpected error occurred. Please try again.")
             st.stop()
     except Exception as e:
-        st.error("Unable to validate session. Please try again.")
+        st.error(f"Unable to validate session: {e}. Please try again.")
         st.stop()
+
+# Redirect user to the login page
+def redirect_to_login():
+    st.write("Redirecting to login page...")
+    st.experimental_set_query_params()  # Clear any query params (API key)
+    st.experimental_rerun()
+    # Perform the redirect
+    st.stop()
 
 # Validate user and fetch user data
 user_data = validate_user()
@@ -59,7 +72,11 @@ if user_data["role"] == "free" and int(user_data["remaining_images"]) <= 0:
 # Display user information and logout option
 st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['email']})")
 st.sidebar.write(f"**Role:** {user_data['role'].capitalize()}")
-st.sidebar.button("Logout", on_click=lambda: st.experimental_set_query_params())  # Clear API key on logout
+
+# Add logout button
+if st.sidebar.button("Logout"):
+    st.experimental_set_query_params()  # Clear API key
+    redirect_to_login()
 
 # Function to create grayscale background while keeping the subject colored
 def create_grayscale_with_subject(original_image, subject_image):
