@@ -1,18 +1,17 @@
 import streamlit as st
+import requests
 from rembg import remove
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from io import BytesIO
 import os
-import requests
+
+# Backend URLs
+CHECK_SESSION_URL = "https://app.ghlsaaskits.com/text-behind-img/check_session.php"
+LOGIN_URL = "https://app.ghlsaaskits.com/text-behind-img/login.php"
+LOGOUT_URL = "https://app.ghlsaaskits.com/text-behind-img/logout.php"
 
 # Set up Streamlit page
 st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
-
-# API and Backend URLs
-BASE_URL = "https://app.ghlsaaskits.com/text-behind-img"  # Update this to your backend URL
-LOGIN_URL = f"{BASE_URL}/check_session.php"
-TRACK_USAGE_URL = f"{BASE_URL}/track_usage.php"
-LOGOUT_URL = f"{BASE_URL}/logout.php"
 
 # Sidebar upload/download instructions
 st.sidebar.write("## Upload and download :gear:")
@@ -24,7 +23,6 @@ FONTS_FOLDER = "fonts"
 if not os.path.exists(FONTS_FOLDER):
     os.makedirs(FONTS_FOLDER)
 
-
 # Function to convert an image to bytes for download
 def convert_image(img, format="PNG"):
     buf = BytesIO()
@@ -32,73 +30,37 @@ def convert_image(img, format="PNG"):
     byte_im = buf.getvalue()
     return byte_im
 
+# Function to validate session
+def validate_session():
+    try:
+        response = requests.get(CHECK_SESSION_URL, cookies=requests.utils.dict_from_cookiejar(st.session_state.cookies))
+        if response.status_code == 200:
+            user_data = response.json()
+            st.session_state.user_data = user_data
+            return True
+        else:
+            return False
+    except Exception as e:
+        st.error("Unable to validate session. Please check your backend configuration.")
+        return False
 
 # Function to create grayscale background while keeping the subject colored
 def create_grayscale_with_subject(original_image, subject_image):
-    # Convert the original image to grayscale
     grayscale_background = ImageOps.grayscale(original_image).convert("RGBA")
-
-    # Extract the alpha channel from the subject
     subject_alpha_mask = subject_image.getchannel("A")
-
-    # Composite the subject onto the grayscale background
     combined_image = Image.composite(subject_image, grayscale_background, subject_alpha_mask)
     return combined_image
-
-
-# Function to check user authentication and role
-def check_user_session():
-    response = requests.get(LOGIN_URL, cookies={"PHPSESSID": st.session_state.session_id})
-    if response.status_code == 200:
-        user_data = response.json()
-        st.session_state.user_role = user_data.get("role")
-        st.session_state.user_id = user_data.get("user_id")
-        st.session_state.remaining_images = user_data.get("remaining_images", 0)
-    else:
-        st.error("Session expired or invalid. Redirecting to login...")
-        st.stop()
-
-
-# Function to log out user
-def logout_user():
-    requests.get(LOGOUT_URL, cookies={"PHPSESSID": st.session_state.session_id})
-    st.session_state.clear()
-    st.experimental_rerun()
-
-
-# Function to track usage for free users
-def track_usage():
-    if st.session_state.user_role == "free":
-        response = requests.post(
-            TRACK_USAGE_URL,
-            json={"user_id": st.session_state.user_id},
-            cookies={"PHPSESSID": st.session_state.session_id},
-        )
-        if response.status_code == 429:  # Limit exceeded
-            st.error("You have reached your limit for generating images as a free user. Upgrade to Pro!")
-            st.stop()
-
 
 # Function to process the uploaded image
 def process_image(upload, text_sets):
     try:
-        # Track usage for free users
-        track_usage()
-
-        # Load the uploaded image
         original_image = Image.open(upload).convert("RGBA")
-
-        # Split subject and background using rembg
         subject_image = remove(original_image)
-
-        # Create grayscale background with colored subject
         grayscale_with_subject = create_grayscale_with_subject(original_image, subject_image)
 
-        # Add custom text between subject and background
         text_layer = Image.new("RGBA", original_image.size, (255, 255, 255, 0))
 
         for text_set in text_sets:
-            # Extract customization options for the text set
             custom_text = text_set["text"]
             font_size = text_set["font_size"]
             font_color = text_set["font_color"]
@@ -111,7 +73,6 @@ def process_image(upload, text_sets):
             y_position = text_set["y_position"]
             text_transform = text_set["text_transform"]
 
-            # Transform text
             if text_transform == "uppercase":
                 custom_text = custom_text.upper()
             elif text_transform == "lowercase":
@@ -119,7 +80,6 @@ def process_image(upload, text_sets):
             elif text_transform == "capitalize":
                 custom_text = custom_text.capitalize()
 
-            # Set font using uploaded fonts in the `fonts` folder
             font_path = os.path.join(FONTS_FOLDER, f"{font_family}.ttf")
             try:
                 font = ImageFont.truetype(font_path, font_size)
@@ -127,23 +87,18 @@ def process_image(upload, text_sets):
                 st.warning(f"Could not load font: {font_family}. Using default font.")
                 font = ImageFont.load_default()
 
-            # Adjust font color with opacity
-            r, g, b = tuple(int(font_color[i:i+2], 16) for i in (1, 3, 5))  # Convert #RRGGBB to RGB
+            r, g, b = tuple(int(font_color[i:i+2], 16) for i in (1, 3, 5))
             font_color_with_opacity = (r, g, b, int(255 * text_opacity))
 
-            # Adjust stroke color
-            sr, sg, sb = tuple(int(stroke_color[i:i+2], 16) for i in (1, 3, 5))  # Convert #RRGGBB to RGB
+            sr, sg, sb = tuple(int(stroke_color[i:i+2], 16) for i in (1, 3, 5))
             stroke_color_with_opacity = (sr, sg, sb, int(255 * text_opacity))
 
-            # Create a separate image for the text
             text_img = Image.new("RGBA", text_layer.size, (255, 255, 255, 0))
             text_draw = ImageDraw.Draw(text_img)
 
-            # Calculate text position
             text_x = (original_image.width / 2) + x_position
             text_y = (original_image.height / 2) + y_position
 
-            # Add text with stroke
             text_draw.text(
                 (text_x, text_y),
                 custom_text,
@@ -154,75 +109,52 @@ def process_image(upload, text_sets):
                 stroke_fill=stroke_color_with_opacity,
             )
 
-            # Rotate text and merge layers
             rotated_text_img = text_img.rotate(rotation, resample=Image.BICUBIC, center=(text_x, text_y))
             text_layer = Image.alpha_composite(text_layer, rotated_text_img)
 
-        # Merge the layers: Background + Text + Subject
         combined = Image.alpha_composite(original_image.convert("RGBA"), text_layer)
         combined = Image.alpha_composite(combined, subject_image.convert("RGBA"))
 
-        # Display the final result
         st.write("## Final Image with Text 📝")
         st.image(combined, use_column_width=True)
+        st.sidebar.download_button("Download Final Image", convert_image(combined), "final_image.png", "image/png")
 
-        # Add download button for the final image
-        st.sidebar.download_button(
-            "Download Final Image",
-            convert_image(combined),
-            "final_image.png",
-            "image/png",
-        )
-
-        # Two-column layout for Grayscale + Subject Image
         col1, col2 = st.columns(2)
-
-        # Grayscale Background + Colored Subject
         col1.write("### Grayscale Background Image 🌑")
         col1.image(grayscale_with_subject, use_column_width=True)
-        col1.download_button(
-            "Download Grayscale Background",
-            convert_image(grayscale_with_subject),
-            "grayscale_with_subject.png",
-            "image/png",
-        )
+        col1.download_button("Download Grayscale Background", convert_image(grayscale_with_subject), "grayscale_with_subject.png", "image/png")
 
-        # Background Removed Image
         col2.write("### Background Removed Image 👤")
         col2.image(subject_image, use_column_width=True)
-        col2.download_button(
-            "Download Removed Background",
-            convert_image(subject_image),
-            "background_removed.png",
-            "image/png",
-        )
+        col2.download_button("Download Removed Background", convert_image(subject_image), "background_removed.png", "image/png")
 
     except Exception as e:
         st.error(f"An error occurred while processing the image: {str(e)}")
 
+# Session Management
+if "cookies" not in st.session_state:
+    st.session_state.cookies = None
+if "user_data" not in st.session_state:
+    st.session_state.user_data = None
 
-# Initialize session state
-if "session_id" not in st.session_state:
-    st.session_state.session_id = st.experimental_get_query_params().get("session_id", [None])[0]
-
-if not st.session_state.session_id:
+# Validate session
+if not validate_session():
     st.error("You need to log in to access this application.")
     st.stop()
 
-# Check user session
-check_user_session()
+user_data = st.session_state.user_data
 
-# Add a logout button
+# Display user information and logout option
+st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['email']})")
 if st.sidebar.button("Logout"):
-    logout_user()
+    requests.get(LOGOUT_URL, cookies=requests.utils.dict_from_cookiejar(st.session_state.cookies))
+    st.session_state.clear()
+    st.experimental_rerun()
 
-# File upload in the sidebar
+# File upload
 my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
 
-# Manage multiple text sets
 st.sidebar.write("### Manage Text Sets")
-
-# Initialize session state for text sets
 if "text_sets" not in st.session_state:
     st.session_state.text_sets = [
         {
@@ -240,43 +172,13 @@ if "text_sets" not in st.session_state:
         }
     ]
 
-# Function to handle adding a new text set
-def add_text_set():
-    st.session_state.text_sets.append(
-        {
-            "text": "New Text",
-            "font_size": 150,
-            "font_color": "#FFFFFF",
-            "font_family": "Arial",
-            "font_stroke": 2,
-            "stroke_color": "#000000",
-            "text_opacity": 1.0,
-            "rotation": 0,
-            "x_position": 0,
-            "y_position": 0,
-            "text_transform": "none",
-        }
-    )
-
-# Function to handle removing a text set
-def remove_text_set(index):
-    st.session_state.text_sets.pop(index)
-
-# Button to add a new text set
-st.sidebar.button("Add Text Set", on_click=add_text_set)
-
-# Render each text set with collapsible editors
+# Render text sets
 for i, text_set in enumerate(st.session_state.text_sets):
     with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
-        if st.button(f"Remove Text Set {i + 1}", key=f"remove_text_set_{i}"):
-            remove_text_set(i)
-            break
-
         text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}")
         text_set["font_family"] = st.selectbox(
             f"Font Family {i + 1}",
             [f.replace(".ttf", "") for f in os.listdir(FONTS_FOLDER) if f.endswith(".ttf")],
-            index=0,
             key=f"font_family_{i}",
         )
         text_set["text_transform"] = st.selectbox(
@@ -286,15 +188,12 @@ for i, text_set in enumerate(st.session_state.text_sets):
         text_set["font_color"] = st.color_picker(f"Font Color {i + 1}", text_set["font_color"], key=f"font_color_{i}")
         text_set["font_stroke"] = st.slider(f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}")
         text_set["stroke_color"] = st.color_picker(f"Stroke Color {i + 1}", text_set["stroke_color"], key=f"stroke_color_{i}")
-        text_set["text_opacity"] = st.slider(
-            f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}"
-        )
+        text_set["text_opacity"] = st.slider(f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], key=f"text_opacity_{i}")
         text_set["rotation"] = st.slider(f"Rotate Text {i + 1}", 0, 360, text_set["rotation"], key=f"rotation_{i}")
         text_set["x_position"] = st.slider(f"X Position {i + 1}", -400, 400, text_set["x_position"], key=f"x_position_{i}")
         text_set["y_position"] = st.slider(f"Y Position {i + 1}", -400, 400, text_set["y_position"], key=f"y_position_{i}")
 
-
-# Process the uploaded image
+# Process uploaded image
 if my_upload is not None:
     if my_upload.size > MAX_FILE_SIZE:
         st.error("The uploaded file is too large. Please upload an image smaller than 5MB.")
