@@ -67,14 +67,22 @@ def redirect_to_login():
     # Clear query parameters (API key)
     st.experimental_set_query_params()  # Clear any query params
 
-    # Display a message with a button to go back to the login page
-    st.markdown("""
+    # Clear the sidebar content
+    for key in st.session_state.keys():
+        del st.session_state[key]
+
+    # Display the message and redirect button
+    st.markdown(f"""
         <h4>Login back to the app...</h4>
-        <a href="https://app.ghlsaaskits.com/text-behind-img/login.php" 
-           style="text-decoration: none;">
-           <button style="padding: 10px 20px; background-color: #007bff; 
-                          color: white; border: none; border-radius: 5px; 
-                          font-size: 16px; cursor: pointer;">
+        <a href="{LOGIN_URL}" style="text-decoration: none;">
+           <button style="
+               padding: 10px 20px; 
+               background-color: #007bff; 
+               color: white; 
+               border: none; 
+               border-radius: 5px; 
+               font-size: 16px; 
+               cursor: pointer;">
                Click here to login
            </button>
         </a>
@@ -82,6 +90,7 @@ def redirect_to_login():
 
     # Stop further execution
     st.stop()
+
 
 
 
@@ -104,8 +113,11 @@ st.sidebar.write(f"**Role:** {user_data['role'].capitalize()}")
 
 # Add logout button
 if st.sidebar.button("Logout"):
-    st.experimental_set_query_params()  # Clear query params (API key)
-    redirect_to_login()  # Redirect to the login page
+    # Clear all session data
+    st.session_state.clear()
+    # Redirect to login
+    redirect_to_login()
+
 
 
 # Function to create grayscale background while keeping the subject colored
