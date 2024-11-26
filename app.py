@@ -1,8 +1,8 @@
 import streamlit as st
-import requests
 from rembg import remove
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from io import BytesIO
+import requests
 import os
 
 # Backend URLs
@@ -12,9 +12,6 @@ LOGOUT_URL = "https://app.ghlsaaskits.com/text-behind-img/logout.php"
 
 # Set up Streamlit page
 st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
-
-# Sidebar upload/download instructions
-st.sidebar.write("## Upload and download :gear:")
 
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB max file size
 
@@ -44,9 +41,9 @@ def validate_session():
         st.error("Unable to validate session. Please check your backend configuration.")
         return False
 
-# Initialize session state variables
+# Session Management
 if "cookies" not in st.session_state:
-    st.session_state.cookies = None
+    st.session_state.cookies = requests.cookies.RequestsCookieJar()
 if "user_data" not in st.session_state:
     st.session_state.user_data = None
 
@@ -63,25 +60,43 @@ if not validate_session():
     )
     st.stop()
 
-# Retrieve user data from session state
 user_data = st.session_state.user_data
 
-# Display user information and logout button
-st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['email']})")
-if st.sidebar.button("Logout"):
-    # Logout the user
-    requests.get(LOGOUT_URL, cookies=requests.utils.dict_from_cookiejar(st.session_state.cookies))
-    st.session_state.clear()
-    # Redirect to login
-    st.markdown(
-        f"""
-        <script>
-            window.location.href = "{LOGIN_URL}";
-        </script>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.stop()
+# Display top navigation with user info and logout
+st.markdown(
+    f"""
+    <style>
+        .topnav {{
+            background-color: #333;
+            overflow: hidden;
+            color: white;
+            font-size: 18px;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        .topnav a {{
+            color: white;
+            text-decoration: none;
+            margin-left: 20px;
+        }}
+    </style>
+    <div class="topnav">
+        <div>Welcome, {user_data['name']} ({user_data['role']})</div>
+        <a href="{LOGOUT_URL}">Logout</a>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# Role-based restrictions
+if user_data["role"] == "free":
+    st.warning("You are on a Free plan. You can generate and download only 2 images.")
+    remaining_images = int(user_data.get("remaining_images", 0))
+    if remaining_images <= 0:
+        st.error("You have reached your limit for generating images. Upgrade to Pro for unlimited access!")
+        st.stop()
 
 # File upload
 my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
@@ -103,6 +118,31 @@ if "text_sets" not in st.session_state:
             "text_transform": "none",
         }
     ]
+
+# Function to handle adding a new text set
+def add_text_set():
+    st.session_state.text_sets.append(
+        {
+            "text": "New Text",
+            "font_size": 150,
+            "font_color": "#FFFFFF",
+            "font_family": "Arial",
+            "font_stroke": 2,
+            "stroke_color": "#000000",
+            "text_opacity": 1.0,
+            "rotation": 0,
+            "x_position": 0,
+            "y_position": 0,
+            "text_transform": "none",
+        }
+    )
+
+# Function to handle removing a text set
+def remove_text_set(index):
+    st.session_state.text_sets.pop(index)
+
+# Button to add a new text set
+st.sidebar.button("Add Text Set", on_click=add_text_set)
 
 # Render text sets
 for i, text_set in enumerate(st.session_state.text_sets):
@@ -127,10 +167,15 @@ for i, text_set in enumerate(st.session_state.text_sets):
 
 # Process uploaded image
 if my_upload is not None:
+    if user_data["role"] == "free":
+        if remaining_images <= 0:
+            st.error("You have reached your limit for generating images. Upgrade to Pro for unlimited access!")
+            st.stop()
+
     if my_upload.size > MAX_FILE_SIZE:
         st.error("The uploaded file is too large. Please upload an image smaller than 5MB.")
     else:
-        # Processing logic here
-        pass
+        # Call your processing logic here
+        st.success("Image uploaded successfully. Processing logic goes here.")
 else:
     st.write("Upload an image to begin editing!")
