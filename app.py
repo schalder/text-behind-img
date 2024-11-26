@@ -27,30 +27,32 @@ def convert_image(img, format="PNG"):
 
 
 # Function to create grayscale background while keeping the subject colored
-def create_grayscale_with_subject(image, subject_image):
+def create_grayscale_with_subject(original_image, subject_image):
     # Convert the original image to grayscale
-    grayscale_background = ImageOps.grayscale(image).convert("RGBA")
+    grayscale_background = ImageOps.grayscale(original_image).convert("RGBA")
+
     # Extract the alpha channel from the subject
     subject_alpha_mask = subject_image.getchannel("A")
+
     # Composite the subject onto the grayscale background
-    grayscale_with_subject = Image.composite(subject_image, grayscale_background, subject_alpha_mask)
-    return grayscale_with_subject
+    combined_image = Image.composite(subject_image, grayscale_background, subject_alpha_mask)
+    return combined_image
 
 
 # Function to process the uploaded image
 def process_image(upload, text_sets):
     try:
         # Load the uploaded image
-        image = Image.open(upload).convert("RGBA")
+        original_image = Image.open(upload).convert("RGBA")
 
         # Split subject and background using rembg
-        subject_image = remove(image)
+        subject_image = remove(original_image)
 
         # Create grayscale background with colored subject
-        grayscale_with_subject = create_grayscale_with_subject(image, subject_image)
+        grayscale_with_subject = create_grayscale_with_subject(original_image, subject_image)
 
         # Add custom text between subject and background
-        text_layer = Image.new("RGBA", image.size, (255, 255, 255, 0))
+        text_layer = Image.new("RGBA", original_image.size, (255, 255, 255, 0))
         draw = ImageDraw.Draw(text_layer)
 
         for text_set in text_sets:
@@ -81,8 +83,8 @@ def process_image(upload, text_sets):
             text_draw = ImageDraw.Draw(text_img)
 
             # Calculate text position
-            text_x = (image.width / 2) + x_position
-            text_y = (image.height / 2) + y_position
+            text_x = (original_image.width / 2) + x_position
+            text_y = (original_image.height / 2) + y_position
 
             # Add text to the new layer
             text_draw.text((text_x, text_y), custom_text, fill=font_color_with_opacity, font=font, anchor="mm")
@@ -92,7 +94,7 @@ def process_image(upload, text_sets):
             text_layer = Image.alpha_composite(text_layer, rotated_text_img)
 
         # Merge the layers: Background + Text + Subject
-        combined = Image.alpha_composite(image.convert("RGBA"), text_layer)
+        combined = Image.alpha_composite(original_image.convert("RGBA"), text_layer)
         combined = Image.alpha_composite(combined, subject_image.convert("RGBA"))
 
         # Display the final result
