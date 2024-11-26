@@ -35,7 +35,7 @@ def validate_user():
     api_key = st.experimental_get_query_params().get("api_key", [None])[0]
     
     if not api_key:
-        st.warning("Missing API key in URL. Redirecting to login...")
+        st.warning("Click the button below to login")
         redirect_to_login()
         st.stop()
     
