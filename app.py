@@ -64,10 +64,16 @@ def validate_user():
 
 # Redirect user to the login page
 def redirect_to_login():
+    # Clear query parameters (API key)
+    st.experimental_set_query_params()  # Clear any query params
+
+    # Clear the sidebar content
+    for key in st.session_state.keys():
+        del st.session_state[key]
+
     # Display the message and redirect button
     st.markdown(f"""
-        <h4>Missing API key in URL. Redirecting to login...</h4>
-        <p>Login back to the app...</p>
+        <h4>Login back to the app...</h4>
         <a href="{LOGIN_URL}" style="text-decoration: none;">
            <button style="
                padding: 10px 20px; 
@@ -84,6 +90,7 @@ def redirect_to_login():
 
     # Stop further execution
     st.stop()
+
 
 
 
@@ -110,13 +117,8 @@ st.sidebar.write(f"**Role:** {user_data['role'].capitalize()}")
 if st.sidebar.button("Logout"):
     # Clear all session data
     st.session_state.clear()
-    # Clear query parameters (API key)
-    st.experimental_set_query_params()
-    # Reload the page
-    st.experimental_rerun()
-
-
-
+    # Redirect to login
+    redirect_to_login()
 
 # Function to create grayscale background while keeping the subject colored
 def create_grayscale_with_subject(original_image, subject_image):
