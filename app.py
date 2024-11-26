@@ -26,6 +26,17 @@ def convert_image(img, format="PNG"):
     return byte_im
 
 
+# Function to create grayscale background while keeping the subject colored
+def create_grayscale_with_subject(image, subject_image):
+    grayscale_background = ImageOps.grayscale(image).convert("RGBA")  # Convert the background to grayscale
+    subject_alpha_mask = subject_image.getchannel("A")  # Get the alpha channel from the subject image
+
+    # Composite the subject onto the grayscale background
+    grayscale_with_subject = Image.composite(subject_image, grayscale_background, subject_alpha_mask)
+
+    return grayscale_with_subject
+
+
 # Function to process the uploaded image
 def process_image(upload, text_sets):
     try:
@@ -35,13 +46,8 @@ def process_image(upload, text_sets):
         # Split subject and background using rembg
         subject_image = remove(image)
 
-        # Create grayscale background while keeping the subject colored
-        grayscale_background = ImageOps.grayscale(image).convert("RGBA")  # Convert background to grayscale
-        subject_mask = Image.alpha_composite(
-            Image.new("RGBA", image.size, (0, 0, 0, 0)),
-            subject_image
-        )
-        combined_grayscale = Image.alpha_composite(grayscale_background, subject_mask)
+        # Create grayscale background with colored subject
+        grayscale_with_subject = create_grayscale_with_subject(image, subject_image)
 
         # Add custom text between subject and background
         text_layer = Image.new("RGBA", image.size, (255, 255, 255, 0))
@@ -106,10 +112,10 @@ def process_image(upload, text_sets):
 
         # Grayscale + Subject Image
         col1.write("### Highlighted Subject with Grayscale Background 🌑")
-        col1.image(combined_grayscale, use_column_width=True)
+        col1.image(grayscale_with_subject, use_column_width=True)
         col1.download_button(
             "Download Image",
-            convert_image(combined_grayscale),
+            convert_image(grayscale_with_subject),
             "highlighted_subject.png",
             "image/png",
         )
