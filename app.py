@@ -41,15 +41,14 @@ def validate_session():
         st.error("Unable to validate session. Please check your backend configuration.")
         return False
 
-# Session Management
+# Redirect non-logged-in users to the PHP login page
 if "cookies" not in st.session_state:
     st.session_state.cookies = requests.cookies.RequestsCookieJar()
 if "user_data" not in st.session_state:
     st.session_state.user_data = None
 
-# Validate session or redirect to login
 if not validate_session():
-    # Redirect to the login page if session validation fails
+    # Redirect to PHP login page
     st.markdown(
         f"""
         <script>
@@ -60,6 +59,7 @@ if not validate_session():
     )
     st.stop()
 
+# Retrieve user data
 user_data = st.session_state.user_data
 
 # Display top navigation with user info and logout
@@ -156,9 +156,9 @@ for i, text_set in enumerate(st.session_state.text_sets):
         text_set["text_transform"] = st.selectbox(
             f"Text Transform {i + 1}", ["none", "uppercase", "lowercase", "capitalize"], key=f"text_transform_{i}"
         )
-        text_set["font_size"] = st.slider(f"Font Size {i + 1}", 10, 400, text_set["font_size"], key=f"font_size_{i}")
-        text_set["font_color"] = st.color_picker(f"Font Color {i + 1}", text_set["font_color"], key=f"font_color_{i}")
-        text_set["font_stroke"] = st.slider(f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}")
+        text_set["font_size"] = st.slider(f"Font Size {i + 1}", 10, 400, text_set["font_size"], key=f"text_size_{i}")
+        text_set["font_color"] = st.color_picker(f"Font Color {i + 1}", text_set["font_color"], key=f"text_color_{i}")
+        text_set["font_stroke"] = st.slider(f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"text_stroke_{i}")
         text_set["stroke_color"] = st.color_picker(f"Stroke Color {i + 1}", text_set["stroke_color"], key=f"stroke_color_{i}")
         text_set["text_opacity"] = st.slider(f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], key=f"text_opacity_{i}")
         text_set["rotation"] = st.slider(f"Rotate Text {i + 1}", 0, 360, text_set["rotation"], key=f"rotation_{i}")
@@ -175,7 +175,6 @@ if my_upload is not None:
     if my_upload.size > MAX_FILE_SIZE:
         st.error("The uploaded file is too large. Please upload an image smaller than 5MB.")
     else:
-        # Call your processing logic here
         st.success("Image uploaded successfully. Processing logic goes here.")
 else:
     st.write("Upload an image to begin editing!")
