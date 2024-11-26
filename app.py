@@ -18,19 +18,6 @@ if not os.path.exists(FONTS_FOLDER):
     os.makedirs(FONTS_FOLDER)
 
 
-# Function to map font weight to a specific font file
-def map_font_weight(font_family, font_weight):
-    # Define a mapping of weights to file names
-    font_weight_mapping = {
-        100: f"{font_family}-Light.ttf",
-        400: f"{font_family}-Regular.ttf",
-        700: f"{font_family}-Bold.ttf",
-        900: f"{font_family}-Black.ttf",
-    }
-    # Return the corresponding font file or fallback to regular
-    return font_weight_mapping.get(font_weight, f"{font_family}-Regular.ttf")
-
-
 # Function to convert an image to bytes for download
 def convert_image(img, format="PNG"):
     buf = BytesIO()
@@ -80,12 +67,13 @@ def process_image(upload, text_sets):
             x_position = text_set["x_position"]
             y_position = text_set["y_position"]
 
-            # Get the appropriate font file based on the selected font weight
-            font_file = os.path.join(FONTS_FOLDER, map_font_weight(font_family, font_weight))
+            # Set font using uploaded fonts in the `fonts` folder
+            font_path = os.path.join(FONTS_FOLDER, f"{font_family}.ttf")
             try:
-                font = ImageFont.truetype(font_file, font_size)
+                # Load the appropriate font
+                font = ImageFont.truetype(font_path, font_size)
             except Exception:
-                st.warning(f"Could not load font: {font_file}. Using default font.")
+                st.warning(f"Could not load font: {font_family}. Using default font.")
                 font = ImageFont.load_default()
 
             # Adjust font color with opacity
@@ -127,7 +115,7 @@ def process_image(upload, text_sets):
         col1, col2 = st.columns(2)
 
         # Grayscale Background + Colored Subject
-        col1.write("### rayscale Background 🌑")
+        col1.write("### Grayscale Background Image 🌑")
         col1.image(grayscale_with_subject, use_column_width=True)
         col1.download_button(
             "Download Grayscale Background",
