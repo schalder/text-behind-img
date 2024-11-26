@@ -31,32 +31,43 @@ def convert_image(img, format="PNG"):
 
 # Validate user session using the API key
 def validate_user():
-    api_key = st.experimental_get_query_params().get("api_key", [None])[0]  # Extract API key from URL
+    # Extract the API key from the query parameter
+    api_key = st.experimental_get_query_params().get("api_key", [None])[0]
+    
     if not api_key:
-        st.warning("Missing API key. Redirecting to login...")
+        st.warning("Missing API key in URL. Redirecting to login...")
         redirect_to_login()
         st.stop()
 
+    # Debugging: Display extracted API key
+    st.write(f"Extracted API Key: {api_key}")  # Debugging purpose only, remove in production
+    
+    # Validate API key with the backend
     try:
         response = requests.post(VALIDATE_API_URL, json={"api_key": api_key})
+        
+        # Debugging: Display backend response
+        st.write(f"Backend Response: {response.text}")  # Debugging purpose only, remove in production
+        
         if response.status_code == 200:
             user_data = response.json()
-            # Validate that user_data contains all expected fields
+            # Ensure all required fields are present
             required_fields = ["user_id", "name", "email", "role", "remaining_images"]
             if not all(field in user_data for field in required_fields):
-                st.error("Invalid response from the server. Please contact support.")
+                st.error("Invalid response from the server. Missing required fields.")
                 st.stop()
-            return user_data  # Valid user data
+            return user_data  # Return valid user data
         elif response.status_code == 401:
             st.warning("Invalid or expired API key. Redirecting to login...")
             redirect_to_login()
             st.stop()
         else:
-            st.error(f"Unexpected error: {response.text}. Please try again later.")
+            st.error(f"Unexpected error: {response.text}. Please contact support.")
             st.stop()
     except Exception as e:
         st.error(f"Unable to validate session: {e}. Please try again.")
         st.stop()
+
 
 
 # Redirect user to the login page
