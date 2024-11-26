@@ -98,8 +98,40 @@ def redirect_to_login():
 
 # Logout functionality
 def handle_logout():
-    st.experimental_set_query_params()  # Clear API key from URL
-    redirect_to_login()
+    # Clear session state
+    st.session_state.clear()
+    # Clear query parameters (API key)
+    st.experimental_set_query_params()
+
+    # Perform a full page reload by using HTML and JavaScript for redirection
+    st.markdown(f"""
+        <h4>Logging out...</h4>
+        <script>
+            window.location.href = "{LOGIN_URL}";
+        </script>
+        <a href="{LOGIN_URL}" style="text-decoration: none;">
+            <button style="
+                padding: 10px 20px; 
+                background-color: #007bff; 
+                color: white; 
+                border: none; 
+                border-radius: 5px; 
+                font-size: 16px; 
+                cursor: pointer;">
+                Click here to login
+            </button>
+        </a>
+    """, unsafe_allow_html=True)
+
+    # Stop further execution
+    st.stop()
+
+# Add logout button
+if st.sidebar.button("Logout"):
+    handle_logout()
+
+
+
 
 # Validate user and fetch user data
 user_data = validate_user()
