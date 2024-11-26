@@ -115,7 +115,7 @@ def process_image(upload, text_sets):
         col1, col2 = st.columns(2)
 
         # Grayscale Background + Colored Subject
-        col1.write("### Highlighted Subject with Grayscale Background 🌑")
+        col1.write("### Grayscale Background 🌑")
         col1.image(grayscale_with_subject, use_column_width=True)
         col1.download_button(
             "Download Grayscale Background",
