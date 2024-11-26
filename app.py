@@ -94,8 +94,24 @@ def redirect_to_login():
 
 # Logout functionality
 def handle_logout():
-    st.experimental_set_query_params()  # Clear API key from URL
-    redirect_to_login()
+    # Clear session state
+    st.session_state.clear()
+    # Clear query parameters (API key)
+    st.experimental_set_query_params()
+
+    # Perform a full page reload using JavaScript
+    st.markdown(f"""
+        <script>
+            window.location.reload();
+        </script>
+        <noscript>
+            <meta http-equiv="refresh" content="0">
+        </noscript>
+    """, unsafe_allow_html=True)
+
+    # Stop further execution
+    st.stop()
+    
 
 
 # Validate user and fetch user data
@@ -112,10 +128,7 @@ st.sidebar.write(f"**Role:** {user_data['role'].capitalize()}")
 
 # Add logout button
 if st.sidebar.button("Logout"):
-    # Clear all session data
-    st.session_state.clear()
-    # Redirect to login
-    redirect_to_login()
+    handle_logout()
 
 # Function to create grayscale background while keeping the subject colored
 def create_grayscale_with_subject(original_image, subject_image):
