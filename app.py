@@ -3,9 +3,16 @@ from rembg import remove
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from io import BytesIO
 import os
+import requests
 
 # Set up Streamlit page
 st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
+
+# API and Backend URLs
+BASE_URL = "https://app.ghlsaaskits.com/text-behind-img"  # Update this to your backend URL
+LOGIN_URL = f"{BASE_URL}/check_session.php"
+TRACK_USAGE_URL = f"{BASE_URL}/track_usage.php"
+LOGOUT_URL = f"{BASE_URL}/logout.php"
 
 # Sidebar upload/download instructions
 st.sidebar.write("## Upload and download :gear:")
@@ -39,9 +46,45 @@ def create_grayscale_with_subject(original_image, subject_image):
     return combined_image
 
 
+# Function to check user authentication and role
+def check_user_session():
+    response = requests.get(LOGIN_URL, cookies={"PHPSESSID": st.session_state.session_id})
+    if response.status_code == 200:
+        user_data = response.json()
+        st.session_state.user_role = user_data.get("role")
+        st.session_state.user_id = user_data.get("user_id")
+        st.session_state.remaining_images = user_data.get("remaining_images", 0)
+    else:
+        st.error("Session expired or invalid. Redirecting to login...")
+        st.stop()
+
+
+# Function to log out user
+def logout_user():
+    requests.get(LOGOUT_URL, cookies={"PHPSESSID": st.session_state.session_id})
+    st.session_state.clear()
+    st.experimental_rerun()
+
+
+# Function to track usage for free users
+def track_usage():
+    if st.session_state.user_role == "free":
+        response = requests.post(
+            TRACK_USAGE_URL,
+            json={"user_id": st.session_state.user_id},
+            cookies={"PHPSESSID": st.session_state.session_id},
+        )
+        if response.status_code == 429:  # Limit exceeded
+            st.error("You have reached your limit for generating images as a free user. Upgrade to Pro!")
+            st.stop()
+
+
 # Function to process the uploaded image
 def process_image(upload, text_sets):
     try:
+        # Track usage for free users
+        track_usage()
+
         # Load the uploaded image
         original_image = Image.open(upload).convert("RGBA")
 
@@ -157,6 +200,21 @@ def process_image(upload, text_sets):
     except Exception as e:
         st.error(f"An error occurred while processing the image: {str(e)}")
 
+
+# Initialize session state
+if "session_id" not in st.session_state:
+    st.session_state.session_id = st.experimental_get_query_params().get("session_id", [None])[0]
+
+if not st.session_state.session_id:
+    st.error("You need to log in to access this application.")
+    st.stop()
+
+# Check user session
+check_user_session()
+
+# Add a logout button
+if st.sidebar.button("Logout"):
+    logout_user()
 
 # File upload in the sidebar
 my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
