@@ -22,9 +22,34 @@ FONTS_FOLDER = "fonts"
 if not os.path.exists(FONTS_FOLDER):
     os.makedirs(FONTS_FOLDER)
 
-# Initialize logout flag
-if "logout_flag" not in st.session_state:
-    st.session_state.logout_flag = False
+# Function to validate the user session using the API key
+def validate_user():
+    # Extract the API key from the query parameter
+    api_key = st.experimental_get_query_params().get("api_key", [None])[0]
+    
+    if not api_key:
+        redirect_to_login()
+        st.stop()
+
+    try:
+        response = requests.post(VALIDATE_API_URL, json={"api_key": api_key})
+        
+        if response.status_code == 200:
+            user_data = response.json()
+            required_fields = ["user_id", "name", "email", "role", "remaining_images"]
+            if not all(field in user_data for field in required_fields):
+                st.error("Invalid response from the server. Missing required fields.")
+                st.stop()
+            return user_data
+        elif response.status_code == 401:
+            redirect_to_login()
+            st.stop()
+        else:
+            st.error(f"Unexpected error: {response.text}. Please contact support.")
+            st.stop()
+    except Exception as e:
+        st.error(f"Unable to validate session: {e}. Please try again.")
+        st.stop()
 
 # Function to redirect to the login page
 def redirect_to_login():
@@ -47,44 +72,13 @@ def redirect_to_login():
     """, unsafe_allow_html=True)
     st.stop()
 
-# Function to validate user session
-def validate_user():
-    if st.session_state.logout_flag:
-        redirect_to_login()
-
-    api_key = st.experimental_get_query_params().get("api_key", [None])[0]
-    if not api_key:
-        st.warning("Click the button below to login.")
-        redirect_to_login()
-        st.stop()
-    
-    try:
-        response = requests.post(VALIDATE_API_URL, json={"api_key": api_key})
-        if response.status_code == 200:
-            user_data = response.json()
-            required_fields = ["user_id", "name", "email", "role", "remaining_images"]
-            if not all(field in user_data for field in required_fields):
-                st.error("Invalid response from the server. Missing required fields.")
-                st.stop()
-            return user_data
-        elif response.status_code == 401:
-            st.warning("Invalid or expired API key. Redirecting to login...")
-            redirect_to_login()
-            st.stop()
-        else:
-            st.error(f"Unexpected error: {response.text}. Please contact support.")
-            st.stop()
-    except Exception as e:
-        st.error(f"Unable to validate session: {e}. Please try again.")
-        st.stop()
-
-# Function to handle logout
+# Logout functionality
 def handle_logout():
-    st.session_state.logout_flag = True
-    st.experimental_set_query_params()  # Clear API key from URL
-    redirect_to_login()
+    st.session_state.clear()  # Clear session state
+    st.experimental_set_query_params()  # Clear query params (API key)
+    redirect_to_login()  # Redirect to the external login page
 
-# Validate user and fetch user data
+# Validate user session
 user_data = validate_user()
 
 # Check user role and remaining usage
