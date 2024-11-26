@@ -236,9 +236,38 @@ if "text_sets" not in st.session_state:
         }
     ]
 
-# Render text sets
+# Function to handle adding a new text set
+def add_text_set():
+    st.session_state.text_sets.append(
+        {
+            "text": "New Text",
+            "font_size": 150,
+            "font_color": "#FFFFFF",
+            "font_family": "Arial",
+            "font_stroke": 2,
+            "stroke_color": "#000000",
+            "text_opacity": 1.0,
+            "rotation": 0,
+            "x_position": 0,
+            "y_position": 0,
+            "text_transform": "none",
+        }
+    )
+
+# Function to handle removing a text set
+def remove_text_set(index):
+    st.session_state.text_sets.pop(index)
+
+# Button to add a new text set
+st.sidebar.button("Add Text Set", on_click=add_text_set)
+
+# Render each text set with collapsible editors
 for i, text_set in enumerate(st.session_state.text_sets):
     with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
+        if st.button(f"Remove Text Set {i + 1}", key=f"remove_text_set_{i}"):
+            remove_text_set(i)
+            break
+
         text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}")
         text_set["font_family"] = st.selectbox(
             f"Font Family {i + 1}",
