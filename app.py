@@ -22,6 +22,17 @@ FONTS_FOLDER = "fonts"
 if not os.path.exists(FONTS_FOLDER):
     os.makedirs(FONTS_FOLDER)
 
+# Function to inject CSS for hiding the sidebar
+def hide_sidebar():
+    hide_sidebar_css = """
+    <style>
+        section.stSidebar.st-emotion-cache-1wqrzgl.eczjsme18 {
+            display: none;
+        }
+    </style>
+    """
+    st.markdown(hide_sidebar_css, unsafe_allow_html=True)
+
 # Function to validate the user session using the API key
 def validate_user():
     # Extract the API key from the query parameter
@@ -29,10 +40,11 @@ def validate_user():
     api_key = query_params.get("api_key", [None])[0]
     
     if not api_key:
-        # No API key found, redirect to login
+        hide_sidebar()  # Hide the sidebar if no API key
+        st.warning("Click the button below to login")
         redirect_to_login()
         st.stop()
-
+    
     try:
         # Validate API key with the backend
         response = requests.post(VALIDATE_API_URL, json={"api_key": api_key})
@@ -46,7 +58,8 @@ def validate_user():
                 st.stop()
             return user_data
         elif response.status_code == 401:
-            # Invalid API key, redirect to login
+            hide_sidebar()  # Hide the sidebar on invalid API key
+            st.warning("Invalid or expired API key. Redirecting to login...")
             redirect_to_login()
             st.stop()
         else:
@@ -60,8 +73,12 @@ def validate_user():
 def redirect_to_login():
     # Clear query parameters (API key)
     st.experimental_set_query_params()  # Clear any query params
-    
-    # Display a message and a login button
+
+    # Clear the sidebar content
+    for key in st.session_state.keys():
+        del st.session_state[key]
+
+    # Display the message and redirect button
     st.markdown(f"""
         <h4>You have been logged out. Please log in again.</h4>
         <a href="{LOGIN_URL}" style="text-decoration: none;">
@@ -81,11 +98,8 @@ def redirect_to_login():
 
 # Logout functionality
 def handle_logout():
-    # Clear all session data
-    st.session_state.clear()
-    # Clear query parameters to prevent redirection loops
     st.experimental_set_query_params()  # Clear API key from URL
-    # Redirect to login page
+    hide_sidebar()  # Hide the sidebar
     redirect_to_login()
 
 # Validate user session
@@ -102,6 +116,9 @@ st.sidebar.write(f"**Role:** {user_data['role'].capitalize()}")
 
 # Add logout button
 if st.sidebar.button("Logout"):
+    # Clear all session data
+    st.session_state.clear()
+    # Redirect to login
     handle_logout()
 
 # Function to create grayscale background while keeping the subject colored
