@@ -41,17 +41,23 @@ def validate_user():
         response = requests.post(VALIDATE_API_URL, json={"api_key": api_key})
         if response.status_code == 200:
             user_data = response.json()
+            # Validate that user_data contains all expected fields
+            required_fields = ["user_id", "name", "email", "role", "remaining_images"]
+            if not all(field in user_data for field in required_fields):
+                st.error("Invalid response from the server. Please contact support.")
+                st.stop()
             return user_data  # Valid user data
         elif response.status_code == 401:
             st.warning("Invalid or expired API key. Redirecting to login...")
             redirect_to_login()
             st.stop()
         else:
-            st.error("An unexpected error occurred. Please try again.")
+            st.error(f"Unexpected error: {response.text}. Please try again later.")
             st.stop()
     except Exception as e:
         st.error(f"Unable to validate session: {e}. Please try again.")
         st.stop()
+
 
 # Redirect user to the login page
 def redirect_to_login():
