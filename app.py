@@ -6,7 +6,7 @@ from io import BytesIO
 import os
 
 # Backend URLs
-VALIDATE_API_URL = "https://app.ghlsaaskits.com/text-behind-img/validate_token.php"
+VALIDATE_API_URL = "https://app.ghlsaaskits.com/text-behind-img/validate_api_key.php"
 LOGIN_URL = "https://app.ghlsaaskits.com/text-behind-img/login.php"
 
 # Set up Streamlit page
@@ -29,22 +29,21 @@ def convert_image(img, format="PNG"):
     byte_im = buf.getvalue()
     return byte_im
 
-# Validate user session using the API key (token)
+# Validate user session using the API key
 def validate_user():
-    token = st.experimental_get_query_params().get("token", [None])[0]  # Extract token from URL
-    if not token:
-        st.warning("Missing API token. Redirecting to login...")
-        st.experimental_set_query_params()  # Clear query parameters
-        st.experimental_rerun()
+    api_key = st.experimental_get_query_params().get("api_key", [None])[0]  # Extract API key from URL
+    if not api_key:
+        st.warning("Missing API key. Redirecting to login...")
+        st.stop()
+
     try:
-        response = requests.post(VALIDATE_API_URL, json={"token": token})
+        response = requests.post(VALIDATE_API_URL, json={"api_key": api_key})
         if response.status_code == 200:
             user_data = response.json()
             return user_data  # Valid user data
         else:
-            st.warning("Invalid session. Redirecting to login...")
-            st.experimental_set_query_params()  # Clear query parameters
-            st.experimental_rerun()
+            st.warning("Invalid session or API key. Redirecting to login...")
+            st.stop()
     except Exception as e:
         st.error("Unable to validate session. Please try again.")
         st.stop()
@@ -53,13 +52,14 @@ def validate_user():
 user_data = validate_user()
 
 # Check user role and remaining usage
-if user_data["role"] == "free" and user_data["remaining_images"] <= 0:
+if user_data["role"] == "free" and int(user_data["remaining_images"]) <= 0:
     st.error("You have reached your limit of 2 image edits as a free user. Please upgrade your account.")
     st.stop()
 
 # Display user information and logout option
 st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['email']})")
-st.sidebar.button("Logout", on_click=lambda: st.experimental_set_query_params())  # Clear token on logout
+st.sidebar.write(f"**Role:** {user_data['role'].capitalize()}")
+st.sidebar.button("Logout", on_click=lambda: st.experimental_set_query_params())  # Clear API key on logout
 
 # Function to create grayscale background while keeping the subject colored
 def create_grayscale_with_subject(original_image, subject_image):
@@ -104,10 +104,10 @@ def process_image(upload, text_sets):
                 st.warning(f"Could not load font: {font_family}. Using default font.")
                 font = ImageFont.load_default()
 
-            r, g, b = tuple(int(font_color[i:i+2], 16) for i in (1, 3, 5))
+            r, g, b = tuple(int(font_color[i:i+2], 16) for i in (1, 3, 5))  # Convert #RRGGBB to RGB
             font_color_with_opacity = (r, g, b, int(255 * text_opacity))
 
-            sr, sg, sb = tuple(int(stroke_color[i:i+2], 16) for i in (1, 3, 5))
+            sr, sg, sb = tuple(int(stroke_color[i:i+2], 16) for i in (1, 3, 5))  # Convert #RRGGBB to RGB
             stroke_color_with_opacity = (sr, sg, sb, int(255 * text_opacity))
 
             text_img = Image.new("RGBA", text_layer.size, (255, 255, 255, 0))
@@ -169,6 +169,7 @@ if "text_sets" not in st.session_state:
         }
     ]
 
+# Render text sets
 for i, text_set in enumerate(st.session_state.text_sets):
     with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
         text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}")
@@ -184,11 +185,14 @@ for i, text_set in enumerate(st.session_state.text_sets):
         text_set["font_color"] = st.color_picker(f"Font Color {i + 1}", text_set["font_color"], key=f"font_color_{i}")
         text_set["font_stroke"] = st.slider(f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}")
         text_set["stroke_color"] = st.color_picker(f"Stroke Color {i + 1}", text_set["stroke_color"], key=f"stroke_color_{i}")
-        text_set["text_opacity"] = st.slider(f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}")
+        text_set["text_opacity"] = st.slider(
+            f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}"
+        )
         text_set["rotation"] = st.slider(f"Rotate Text {i + 1}", 0, 360, text_set["rotation"], key=f"rotation_{i}")
         text_set["x_position"] = st.slider(f"X Position {i + 1}", -400, 400, text_set["x_position"], key=f"x_position_{i}")
         text_set["y_position"] = st.slider(f"Y Position {i + 1}", -400, 400, text_set["y_position"], key=f"y_position_{i}")
 
+# Process the uploaded image
 if my_upload is not None:
     if my_upload.size > MAX_FILE_SIZE:
         st.error("The uploaded file is too large. Please upload an image smaller than 5MB.")
