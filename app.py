@@ -38,6 +38,10 @@ def validate_session():
             user_data = response.json()
             st.session_state.user_data = user_data
             return True
+        elif response.status_code == 403:  # Session not valid
+            st.error("Session expired. Redirecting to login...")
+            st.experimental_set_query_params()
+            st.experimental_rerun()
         else:
             return False
     except Exception as e:
@@ -139,8 +143,7 @@ if "user_data" not in st.session_state:
 
 # Validate session
 if not validate_session():
-    st.error("You need to log in to access this application.")
-    st.stop()
+    st.experimental_rerun()
 
 user_data = st.session_state.user_data
 
@@ -149,6 +152,8 @@ st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['email']
 if st.sidebar.button("Logout"):
     requests.get(LOGOUT_URL, cookies=requests.utils.dict_from_cookiejar(st.session_state.cookies))
     st.session_state.clear()
+    st.experimental_set_query_params()
+    st.write("You have been logged out. Redirecting to login...")
     st.experimental_rerun()
 
 # File upload
