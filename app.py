@@ -38,102 +38,11 @@ def validate_session():
             user_data = response.json()
             st.session_state.user_data = user_data
             return True
-        elif response.status_code == 403:  # Session not valid
-            st.error("Session expired. Redirecting to login...")
-            st.experimental_set_query_params()
-            st.experimental_rerun()
         else:
             return False
     except Exception as e:
         st.error("Unable to validate session. Please check your backend configuration.")
         return False
-
-# Function to create grayscale background while keeping the subject colored
-def create_grayscale_with_subject(original_image, subject_image):
-    grayscale_background = ImageOps.grayscale(original_image).convert("RGBA")
-    subject_alpha_mask = subject_image.getchannel("A")
-    combined_image = Image.composite(subject_image, grayscale_background, subject_alpha_mask)
-    return combined_image
-
-# Function to process the uploaded image
-def process_image(upload, text_sets):
-    try:
-        original_image = Image.open(upload).convert("RGBA")
-        subject_image = remove(original_image)
-        grayscale_with_subject = create_grayscale_with_subject(original_image, subject_image)
-
-        text_layer = Image.new("RGBA", original_image.size, (255, 255, 255, 0))
-
-        for text_set in text_sets:
-            custom_text = text_set["text"]
-            font_size = text_set["font_size"]
-            font_color = text_set["font_color"]
-            font_family = text_set["font_family"]
-            font_stroke = text_set["font_stroke"]
-            stroke_color = text_set["stroke_color"]
-            text_opacity = text_set["text_opacity"]
-            rotation = text_set["rotation"]
-            x_position = text_set["x_position"]
-            y_position = text_set["y_position"]
-            text_transform = text_set["text_transform"]
-
-            if text_transform == "uppercase":
-                custom_text = custom_text.upper()
-            elif text_transform == "lowercase":
-                custom_text = custom_text.lower()
-            elif text_transform == "capitalize":
-                custom_text = custom_text.capitalize()
-
-            font_path = os.path.join(FONTS_FOLDER, f"{font_family}.ttf")
-            try:
-                font = ImageFont.truetype(font_path, font_size)
-            except Exception:
-                st.warning(f"Could not load font: {font_family}. Using default font.")
-                font = ImageFont.load_default()
-
-            r, g, b = tuple(int(font_color[i:i+2], 16) for i in (1, 3, 5))
-            font_color_with_opacity = (r, g, b, int(255 * text_opacity))
-
-            sr, sg, sb = tuple(int(stroke_color[i:i+2], 16) for i in (1, 3, 5))
-            stroke_color_with_opacity = (sr, sg, sb, int(255 * text_opacity))
-
-            text_img = Image.new("RGBA", text_layer.size, (255, 255, 255, 0))
-            text_draw = ImageDraw.Draw(text_img)
-
-            text_x = (original_image.width / 2) + x_position
-            text_y = (original_image.height / 2) + y_position
-
-            text_draw.text(
-                (text_x, text_y),
-                custom_text,
-                fill=font_color_with_opacity,
-                font=font,
-                anchor="mm",
-                stroke_width=font_stroke,
-                stroke_fill=stroke_color_with_opacity,
-            )
-
-            rotated_text_img = text_img.rotate(rotation, resample=Image.BICUBIC, center=(text_x, text_y))
-            text_layer = Image.alpha_composite(text_layer, rotated_text_img)
-
-        combined = Image.alpha_composite(original_image.convert("RGBA"), text_layer)
-        combined = Image.alpha_composite(combined, subject_image.convert("RGBA"))
-
-        st.write("## Final Image with Text 📝")
-        st.image(combined, use_column_width=True)
-        st.sidebar.download_button("Download Final Image", convert_image(combined), "final_image.png", "image/png")
-
-        col1, col2 = st.columns(2)
-        col1.write("### Grayscale Background Image 🌑")
-        col1.image(grayscale_with_subject, use_column_width=True)
-        col1.download_button("Download Grayscale Background", convert_image(grayscale_with_subject), "grayscale_with_subject.png", "image/png")
-
-        col2.write("### Background Removed Image 👤")
-        col2.image(subject_image, use_column_width=True)
-        col2.download_button("Download Removed Background", convert_image(subject_image), "background_removed.png", "image/png")
-
-    except Exception as e:
-        st.error(f"An error occurred while processing the image: {str(e)}")
 
 # Session Management
 if "cookies" not in st.session_state:
@@ -143,7 +52,10 @@ if "user_data" not in st.session_state:
 
 # Validate session
 if not validate_session():
-    st.experimental_rerun()
+    st.error("You need to log in to access this application.")
+    # Redirect to login page if session is invalid
+    st.markdown(f'<meta http-equiv="refresh" content="0; url={LOGIN_URL}" />', unsafe_allow_html=True)
+    st.stop()
 
 user_data = st.session_state.user_data
 
@@ -152,9 +64,8 @@ st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['email']
 if st.sidebar.button("Logout"):
     requests.get(LOGOUT_URL, cookies=requests.utils.dict_from_cookiejar(st.session_state.cookies))
     st.session_state.clear()
-    st.experimental_set_query_params()
-    st.write("You have been logged out. Redirecting to login...")
-    st.experimental_rerun()
+    st.markdown(f'<meta http-equiv="refresh" content="0; url={LOGIN_URL}" />', unsafe_allow_html=True)
+    st.stop()
 
 # File upload
 my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
@@ -203,6 +114,7 @@ if my_upload is not None:
     if my_upload.size > MAX_FILE_SIZE:
         st.error("The uploaded file is too large. Please upload an image smaller than 5MB.")
     else:
-        process_image(my_upload, st.session_state.text_sets)
+        # Processing logic here
+        pass
 else:
     st.write("Upload an image to begin editing!")
