@@ -22,58 +22,16 @@ FONTS_FOLDER = "fonts"
 if not os.path.exists(FONTS_FOLDER):
     os.makedirs(FONTS_FOLDER)
 
-# Function to convert an image to bytes for download
-def convert_image(img, format="PNG"):
-    buf = BytesIO()
-    img.save(buf, format=format)
-    byte_im = buf.getvalue()
-    return byte_im
+# Initialize logout flag
+if "logout_flag" not in st.session_state:
+    st.session_state.logout_flag = False
 
-# Validate user session using the API key
-def validate_user():
-    # Extract the API key from the query parameter
-    api_key = st.experimental_get_query_params().get("api_key", [None])[0]
-    
-    if not api_key:
-        st.warning("Click the button below to login")
-        redirect_to_login()
-        st.stop()
-    
-    try:
-        # Validate API key with the backend
-        response = requests.post(VALIDATE_API_URL, json={"api_key": api_key})
-        
-        if response.status_code == 200:
-            user_data = response.json()
-            # Ensure all required fields are present
-            required_fields = ["user_id", "name", "email", "role", "remaining_images"]
-            if not all(field in user_data for field in required_fields):
-                st.error("Invalid response from the server. Missing required fields.")
-                st.stop()
-            return user_data  # Return valid user data
-        elif response.status_code == 401:
-            st.warning("Invalid or expired API key. Redirecting to login...")
-            redirect_to_login()
-            st.stop()
-        else:
-            st.error(f"Unexpected error: {response.text}. Please contact support.")
-            st.stop()
-    except Exception as e:
-        st.error(f"Unable to validate session: {e}. Please try again.")
-        st.stop()
-
-# Redirect user to the login page
+# Function to redirect to the login page
 def redirect_to_login():
-    # Clear query parameters (API key)
-    st.experimental_set_query_params()  # Clear any query params
-
-    # Clear the sidebar content
-    for key in st.session_state.keys():
-        del st.session_state[key]
-
-    # Display the message and redirect button
+    st.experimental_set_query_params()  # Clear API key from URL
     st.markdown(f"""
-        <h4>Login back to the app...</h4>
+        <meta http-equiv="refresh" content="0; url={LOGIN_URL}">
+        <h4>Redirecting to the login page...</h4>
         <a href="{LOGIN_URL}" style="text-decoration: none;">
            <button style="
                padding: 10px 20px; 
@@ -87,32 +45,44 @@ def redirect_to_login():
            </button>
         </a>
     """, unsafe_allow_html=True)
-
-    # Stop further execution
     st.stop()
 
+# Function to validate user session
+def validate_user():
+    if st.session_state.logout_flag:
+        redirect_to_login()
 
-# Logout functionality
-def handle_logout():
-    # Clear session state
-    st.session_state.clear()
-    # Clear query parameters (API key)
-    st.experimental_set_query_params()
-
-    # Perform a full page reload using JavaScript
-    st.markdown(f"""
-        <script>
-            window.location.reload();
-        </script>
-        <noscript>
-            <meta http-equiv="refresh" content="0">
-        </noscript>
-    """, unsafe_allow_html=True)
-
-    # Stop further execution
-    st.stop()
+    api_key = st.experimental_get_query_params().get("api_key", [None])[0]
+    if not api_key:
+        st.warning("Click the button below to login.")
+        redirect_to_login()
+        st.stop()
     
+    try:
+        response = requests.post(VALIDATE_API_URL, json={"api_key": api_key})
+        if response.status_code == 200:
+            user_data = response.json()
+            required_fields = ["user_id", "name", "email", "role", "remaining_images"]
+            if not all(field in user_data for field in required_fields):
+                st.error("Invalid response from the server. Missing required fields.")
+                st.stop()
+            return user_data
+        elif response.status_code == 401:
+            st.warning("Invalid or expired API key. Redirecting to login...")
+            redirect_to_login()
+            st.stop()
+        else:
+            st.error(f"Unexpected error: {response.text}. Please contact support.")
+            st.stop()
+    except Exception as e:
+        st.error(f"Unable to validate session: {e}. Please try again.")
+        st.stop()
 
+# Function to handle logout
+def handle_logout():
+    st.session_state.logout_flag = True
+    st.experimental_set_query_params()  # Clear API key from URL
+    redirect_to_login()
 
 # Validate user and fetch user data
 user_data = validate_user()
@@ -173,10 +143,10 @@ def process_image(upload, text_sets):
                 st.warning(f"Could not load font: {font_family}. Using default font.")
                 font = ImageFont.load_default()
 
-            r, g, b = tuple(int(font_color[i:i+2], 16) for i in (1, 3, 5))  # Convert #RRGGBB to RGB
+            r, g, b = tuple(int(font_color[i:i+2], 16) for i in (1, 3, 5))
             font_color_with_opacity = (r, g, b, int(255 * text_opacity))
 
-            sr, sg, sb = tuple(int(stroke_color[i:i+2], 16) for i in (1, 3, 5))  # Convert #RRGGBB to RGB
+            sr, sg, sb = tuple(int(stroke_color[i:i+2], 16) for i in (1, 3, 5))
             stroke_color_with_opacity = (sr, sg, sb, int(255 * text_opacity))
 
             text_img = Image.new("RGBA", text_layer.size, (255, 255, 255, 0))
