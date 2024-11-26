@@ -28,12 +28,12 @@ def convert_image(img, format="PNG"):
 
 # Function to create grayscale background while keeping the subject colored
 def create_grayscale_with_subject(image, subject_image):
-    grayscale_background = ImageOps.grayscale(image).convert("RGBA")  # Convert the background to grayscale
-    subject_alpha_mask = subject_image.getchannel("A")  # Get the alpha channel from the subject image
-
+    # Convert the original image to grayscale
+    grayscale_background = ImageOps.grayscale(image).convert("RGBA")
+    # Extract the alpha channel from the subject
+    subject_alpha_mask = subject_image.getchannel("A")
     # Composite the subject onto the grayscale background
     grayscale_with_subject = Image.composite(subject_image, grayscale_background, subject_alpha_mask)
-
     return grayscale_with_subject
 
 
@@ -110,13 +110,13 @@ def process_image(upload, text_sets):
         # Two-column layout for Grayscale + Subject Image
         col1, col2 = st.columns(2)
 
-        # Grayscale + Subject Image
-        col1.write("### Highlighted Subject with Grayscale Background 🌑")
+        # Grayscale Background + Colored Subject
+        col1.write("### Grayscale Background with Colored Subject 🌑")
         col1.image(grayscale_with_subject, use_column_width=True)
         col1.download_button(
-            "Download Image",
+            "Download Grayscale Background",
             convert_image(grayscale_with_subject),
-            "highlighted_subject.png",
+            "grayscale_with_subject.png",
             "image/png",
         )
 
@@ -124,7 +124,7 @@ def process_image(upload, text_sets):
         col2.write("### Background Removed Image 👤")
         col2.image(subject_image, use_column_width=True)
         col2.download_button(
-            "Download Image",
+            "Download Removed Background",
             convert_image(subject_image),
             "background_removed.png",
             "image/png",
