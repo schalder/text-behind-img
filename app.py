@@ -232,7 +232,9 @@ for i, text_set in enumerate(st.session_state.text_sets):
         )
         text_set["font_size"] = st.slider(f"Font Size {i + 1}", 10, 400, text_set["font_size"], key=f"font_size_{i}")
         text_set["font_color"] = st.color_picker(f"Font Color {i + 1}", text_set["font_color"], key=f"font_color_{i}")
-        text_set["font_stroke"] = st.slider(f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}")
+        text_set["font_stroke"] = st.slider(
+            f"Font Stroke {i + 1}", 0, 10, text_set['font_stroke'], key=f"font_stroke_{i}"
+        )
         text_set["text_opacity"] = st.slider(
             f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}"
         )
@@ -258,6 +260,7 @@ for i, text_set in enumerate(st.session_state.text_sets):
         text_set["shadow_blur"] = st.slider(
             f"Shadow Blur {i + 1}", 0, 10, text_set["shadow_blur"], key=f"shadow_blur_{i}"
         )
+
 
 # Process the uploaded image
 if my_upload is not None:
