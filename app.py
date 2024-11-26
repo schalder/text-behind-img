@@ -1,6 +1,6 @@
 import streamlit as st
 from rembg import remove
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 from io import BytesIO
 import os
 
@@ -34,6 +34,14 @@ def process_image(upload, text_sets):
 
         # Split subject and background using rembg
         subject_image = remove(image)
+
+        # Create grayscale background while keeping the subject colored
+        grayscale_background = ImageOps.grayscale(image).convert("RGBA")  # Convert background to grayscale
+        subject_mask = Image.alpha_composite(
+            Image.new("RGBA", image.size, (0, 0, 0, 0)),
+            subject_image
+        )
+        combined_grayscale = Image.alpha_composite(grayscale_background, subject_mask)
 
         # Add custom text between subject and background
         text_layer = Image.new("RGBA", image.size, (255, 255, 255, 0))
@@ -93,12 +101,18 @@ def process_image(upload, text_sets):
             "image/png",
         )
 
-        # Two-column layout for Original Image and Background Removed Image
+        # Two-column layout for Grayscale + Subject Image
         col1, col2 = st.columns(2)
 
-        # Original Image
-        col1.write("### Original Image 📷")
-        col1.image(image, use_column_width=True)
+        # Grayscale + Subject Image
+        col1.write("### Highlighted Subject with Grayscale Background 🌑")
+        col1.image(combined_grayscale, use_column_width=True)
+        col1.download_button(
+            "Download Image",
+            convert_image(combined_grayscale),
+            "highlighted_subject.png",
+            "image/png",
+        )
 
         # Background Removed Image
         col2.write("### Background Removed Image 👤")
