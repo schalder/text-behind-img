@@ -1,6 +1,6 @@
 import streamlit as st
 from rembg import remove
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageFilter
 from io import BytesIO
 import os
 
@@ -53,7 +53,6 @@ def process_image(upload, text_sets):
 
         # Add custom text between subject and background
         text_layer = Image.new("RGBA", original_image.size, (255, 255, 255, 0))
-        draw = ImageDraw.Draw(text_layer)
 
         for text_set in text_sets:
             # Extract customization options for the text set
@@ -108,7 +107,8 @@ def process_image(upload, text_sets):
 
             # Apply shadow if enabled
             if shadow_enabled:
-                shadow_draw = ImageDraw.Draw(text_img)
+                shadow_layer = Image.new("RGBA", text_img.size, (255, 255, 255, 0))
+                shadow_draw = ImageDraw.Draw(shadow_layer)
                 shadow_draw.text(
                     (text_x + shadow_x_offset, text_y + shadow_y_offset),
                     custom_text,
@@ -116,6 +116,9 @@ def process_image(upload, text_sets):
                     font=font,
                     anchor="mm",
                 )
+                # Apply blur to the shadow
+                shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(radius=shadow_blur))
+                text_img = Image.alpha_composite(text_img, shadow_layer)
 
             # Add text with stroke
             text_draw.text(
@@ -198,12 +201,11 @@ if "text_sets" not in st.session_state:
             "text_transform": "none",
             "shadow_enabled": False,
             "shadow_color": "#000000",
-            "shadow_x_offset": 0,
-            "shadow_y_offset": 0,
-            "shadow_blur": 0,
+            "shadow_x_offset": 5,
+            "shadow_y_offset": 5,
+            "shadow_blur": 5,
         }
     ]
-    st.session_state.active_text_set = 0  # To manage collapsible editors
 
 # Function to handle adding a new text set
 def add_text_set():
@@ -222,23 +224,22 @@ def add_text_set():
             "text_transform": "none",
             "shadow_enabled": False,
             "shadow_color": "#000000",
-            "shadow_x_offset": 0,
-            "shadow_y_offset": 0,
-            "shadow_blur": 0,
+            "shadow_x_offset": 5,
+            "shadow_y_offset": 5,
+            "shadow_blur": 5,
         }
     )
 
 # Function to handle removing a text set
 def remove_text_set(index):
     st.session_state.text_sets.pop(index)
-    st.session_state.active_text_set = max(0, st.session_state.active_text_set - 1)
 
 # Button to add a new text set
 st.sidebar.button("Add Text Set", on_click=add_text_set)
 
 # Render each text set with collapsible editors
 for i, text_set in enumerate(st.session_state.text_sets):
-    with st.sidebar.expander(f"Text Set {i + 1}", expanded=i == st.session_state.active_text_set):
+    with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
         if st.button(f"Remove Text Set {i + 1}", key=f"remove_text_set_{i}"):
             remove_text_set(i)
             break
@@ -252,44 +253,19 @@ for i, text_set in enumerate(st.session_state.text_sets):
         )
         text_set["font_size"] = st.slider(f"Font Size {i + 1}", 10, 400, text_set["font_size"], key=f"font_size_{i}")
         text_set["font_color"] = st.color_picker(f"Font Color {i + 1}", text_set["font_color"], key=f"font_color_{i}")
-        text_set["font_stroke"] = st.slider(
-            f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}"
-        )
-        text_set["stroke_color"] = st.color_picker(
-            f"Stroke Color {i + 1}", text_set["stroke_color"], key=f"stroke_color_{i}"
-        )
-        text_set["text_opacity"] = st.slider(
-            f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}"
-        )
+        text_set["font_stroke"] = st.slider(f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}")
+        text_set["stroke_color"] = st.color_picker(f"Stroke Color {i + 1}", text_set["stroke_color"], key=f"stroke_color_{i}")
+        text_set["text_opacity"] = st.slider(f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}")
         text_set["rotation"] = st.slider(f"Rotate Text {i + 1}", 0, 360, text_set["rotation"], key=f"rotation_{i}")
-        text_set["x_position"] = st.slider(
-            f"X Position {i + 1}", -400, 400, text_set["x_position"], key=f"x_position_{i}"
-        )
-        text_set["y_position"] = st.slider(
-            f"Y Position {i + 1}", -400, 400, text_set["y_position"], key=f"y_position_{i}"
-        )
-        text_set["text_transform"] = st.selectbox(
-            f"Text Transform {i + 1}",
-            ["none", "uppercase", "lowercase", "capitalize"],
-            index=0,
-            key=f"text_transform_{i}",
-        )
-        text_set["shadow_enabled"] = st.checkbox(
-            f"Enable Shadow for Text {i + 1}", value=text_set["shadow_enabled"], key=f"shadow_enabled_{i}"
-        )
+        text_set["x_position"] = st.slider(f"X Position {i + 1}", -400, 400, text_set["x_position"], key=f"x_position_{i}")
+        text_set["y_position"] = st.slider(f"Y Position {i + 1}", -400, 400, text_set["y_position"], key=f"y_position_{i}")
+        text_set["text_transform"] = st.selectbox(f"Text Transform {i + 1}", ["none", "uppercase", "lowercase", "capitalize"], key=f"text_transform_{i}")
+        text_set["shadow_enabled"] = st.checkbox(f"Enable Shadow {i + 1}", text_set["shadow_enabled"], key=f"shadow_enabled_{i}")
         if text_set["shadow_enabled"]:
-            text_set["shadow_color"] = st.color_picker(
-                f"Shadow Color {i + 1}", text_set["shadow_color"], key=f"shadow_color_{i}"
-            )
-            text_set["shadow_x_offset"] = st.slider(
-                f"Shadow X Offset {i + 1}", -50, 50, text_set["shadow_x_offset"], key=f"shadow_x_offset_{i}"
-            )
-            text_set["shadow_y_offset"] = st.slider(
-                f"Shadow Y Offset {i + 1}", -50, 50, text_set["shadow_y_offset"], key=f"shadow_y_offset_{i}"
-            )
-            text_set["shadow_blur"] = st.slider(
-                f"Shadow Blur {i + 1}", 0, 10, text_set["shadow_blur"], key=f"shadow_blur_{i}"
-            )
+            text_set["shadow_color"] = st.color_picker(f"Shadow Color {i + 1}", text_set["shadow_color"], key=f"shadow_color_{i}")
+            text_set["shadow_x_offset"] = st.slider(f"Shadow X Offset {i + 1}", -50, 50, text_set["shadow_x_offset"], key=f"shadow_x_offset_{i}")
+            text_set["shadow_y_offset"] = st.slider(f"Shadow Y Offset {i + 1}", -50, 50, text_set["shadow_y_offset"], key=f"shadow_y_offset_{i}")
+            text_set["shadow_blur"] = st.slider(f"Shadow Blur {i + 1}", 0, 20, text_set["shadow_blur"], key=f"shadow_blur_{i}")
 
 # Process the uploaded image
 if my_upload is not None:
