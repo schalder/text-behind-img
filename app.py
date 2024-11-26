@@ -33,6 +33,40 @@ def hide_sidebar():
     """
     st.markdown(hide_sidebar_css, unsafe_allow_html=True)
 
+# Redirect user to the login page
+def redirect_to_login():
+    # Clear query parameters (API key)
+    st.experimental_set_query_params()  # Clear any query params
+
+    # Clear the sidebar content
+    for key in st.session_state.keys():
+        del st.session_state[key]
+
+    # Display the message and redirect button
+    st.markdown(f"""
+        <h4>You have been logged out. Please log in again.</h4>
+        <a href="{LOGIN_URL}" style="text-decoration: none;">
+           <button style="
+               padding: 10px 20px; 
+               background-color: #007bff; 
+               color: white; 
+               border: none; 
+               border-radius: 5px; 
+               font-size: 16px; 
+               cursor: pointer;">
+               Click here to login
+           </button>
+        </a>
+    """, unsafe_allow_html=True)
+    st.stop()
+
+# Function to convert an image to bytes for download
+def convert_image(img, format="PNG"):
+    buf = BytesIO()
+    img.save(buf, format=format)
+    byte_im = buf.getvalue()
+    return byte_im
+
 # Function to validate the user session using the API key
 def validate_user():
     # Extract the API key from the query parameter
@@ -68,33 +102,6 @@ def validate_user():
     except Exception as e:
         st.error(f"Unable to validate session: {e}. Please try again.")
         st.stop()
-
-# Function to redirect to the login page
-def redirect_to_login():
-    # Clear query parameters (API key)
-    st.experimental_set_query_params()  # Clear any query params
-
-    # Clear the sidebar content
-    for key in st.session_state.keys():
-        del st.session_state[key]
-
-    # Display the message and redirect button
-    st.markdown(f"""
-        <h4>You have been logged out. Please log in again.</h4>
-        <a href="{LOGIN_URL}" style="text-decoration: none;">
-           <button style="
-               padding: 10px 20px; 
-               background-color: #007bff; 
-               color: white; 
-               border: none; 
-               border-radius: 5px; 
-               font-size: 16px; 
-               cursor: pointer;">
-               Click here to login
-           </button>
-        </a>
-    """, unsafe_allow_html=True)
-    st.stop()
 
 # Logout functionality
 def handle_logout():
