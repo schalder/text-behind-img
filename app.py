@@ -61,11 +61,24 @@ def process_image(upload, text_sets):
             font_size = text_set["font_size"]
             font_color = text_set["font_color"]
             font_family = text_set["font_family"]
-            font_weight = text_set["font_weight"]
+            font_stroke = text_set["font_stroke"]
             text_opacity = text_set["text_opacity"]
             rotation = text_set["rotation"]
             x_position = text_set["x_position"]
             y_position = text_set["y_position"]
+            text_transform = text_set["text_transform"]
+            shadow_color = text_set["shadow_color"]
+            shadow_x_offset = text_set["shadow_x_offset"]
+            shadow_y_offset = text_set["shadow_y_offset"]
+            shadow_blur = text_set["shadow_blur"]
+
+            # Apply text transform
+            if text_transform == "uppercase":
+                custom_text = custom_text.upper()
+            elif text_transform == "lowercase":
+                custom_text = custom_text.lower()
+            elif text_transform == "capitalize":
+                custom_text = custom_text.capitalize()
 
             # Set font using uploaded fonts in the `fonts` folder
             font_path = os.path.join(FONTS_FOLDER, f"{font_family}.ttf")
@@ -80,17 +93,39 @@ def process_image(upload, text_sets):
             r, g, b = tuple(int(font_color[i:i+2], 16) for i in (1, 3, 5))  # Convert #RRGGBB to RGB
             font_color_with_opacity = (r, g, b, int(255 * text_opacity))
 
-            # Create a separate image for the text and rotate it around its center
+            # Create shadow
+            if shadow_blur > 0:
+                shadow_layer = Image.new("RGBA", text_layer.size, (255, 255, 255, 0))
+                shadow_draw = ImageDraw.Draw(shadow_layer)
+                shadow_r, shadow_g, shadow_b = tuple(int(shadow_color[i:i+2], 16) for i in (1, 3, 5))
+                shadow_color_with_opacity = (shadow_r, shadow_g, shadow_b, int(255 * text_opacity))
+
+                shadow_text_x = (original_image.width / 2) + x_position + shadow_x_offset
+                shadow_text_y = (original_image.height / 2) + y_position + shadow_y_offset
+                shadow_draw.text(
+                    (shadow_text_x, shadow_text_y),
+                    custom_text,
+                    fill=shadow_color_with_opacity,
+                    font=font,
+                    anchor="mm",
+                )
+                text_layer = Image.alpha_composite(text_layer, shadow_layer)
+
+            # Add text to the new layer
             text_img = Image.new("RGBA", text_layer.size, (255, 255, 255, 0))
             text_draw = ImageDraw.Draw(text_img)
 
-            # Calculate text position
-            text_x = (original_image.width / 2) + x_position
-            text_y = (original_image.height / 2) + y_position
-
-            # Add text to the new layer
-            text_draw.text((text_x, text_y), custom_text, fill=font_color_with_opacity, font=font, anchor="mm")
-            rotated_text_img = text_img.rotate(rotation, resample=Image.BICUBIC, center=(text_x, text_y))
+            # Draw text with stroke
+            text_draw.text(
+                ((original_image.width / 2) + x_position, (original_image.height / 2) + y_position),
+                custom_text,
+                fill=font_color_with_opacity,
+                font=font,
+                stroke_width=font_stroke,
+                stroke_fill=(0, 0, 0, int(255 * text_opacity)),
+                anchor="mm",
+            )
+            rotated_text_img = text_img.rotate(rotation, resample=Image.BICUBIC)
 
             # Merge the text layer into the overall text_layer
             text_layer = Image.alpha_composite(text_layer, rotated_text_img)
@@ -152,58 +187,52 @@ if "text_sets" not in st.session_state:
             "font_size": 150,
             "font_color": "#FFFFFF",
             "font_family": "Arial",
-            "font_weight": 400,
+            "font_stroke": 0,
             "text_opacity": 1.0,
             "rotation": 0,
             "x_position": 0,
             "y_position": 0,
+            "text_transform": "none",
+            "shadow_color": "#000000",
+            "shadow_x_offset": 0,
+            "shadow_y_offset": 0,
+            "shadow_blur": 0,
         }
     ]
-    st.session_state.active_text_set = 0  # To manage collapsible editors
 
-# Function to handle adding a new text set
-def add_text_set():
+# Button to add a new text set
+if st.sidebar.button("Add Text Set"):
     st.session_state.text_sets.append(
         {
             "text": "New Text",
             "font_size": 150,
             "font_color": "#FFFFFF",
             "font_family": "Arial",
-            "font_weight": 400,
+            "font_stroke": 0,
             "text_opacity": 1.0,
             "rotation": 0,
             "x_position": 0,
             "y_position": 0,
+            "text_transform": "none",
+            "shadow_color": "#000000",
+            "shadow_x_offset": 0,
+            "shadow_y_offset": 0,
+            "shadow_blur": 0,
         }
     )
 
-# Function to handle removing a text set
-def remove_text_set(index):
-    st.session_state.text_sets.pop(index)
-    st.session_state.active_text_set = max(0, st.session_state.active_text_set - 1)
-
-# Button to add a new text set
-st.sidebar.button("Add Text Set", on_click=add_text_set)
-
-# Render each text set with collapsible editors
+# Render each text set
 for i, text_set in enumerate(st.session_state.text_sets):
-    with st.sidebar.expander(f"Text Set {i + 1}", expanded=i == st.session_state.active_text_set):
-        if st.button(f"Remove Text Set {i + 1}", key=f"remove_text_set_{i}"):
-            remove_text_set(i)
-            break
-
+    with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
         text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}")
         text_set["font_family"] = st.selectbox(
             f"Font Family {i + 1}",
             [f.replace(".ttf", "") for f in os.listdir(FONTS_FOLDER) if f.endswith(".ttf")],
-            index=0,
             key=f"font_family_{i}",
         )
         text_set["font_size"] = st.slider(f"Font Size {i + 1}", 10, 400, text_set["font_size"], key=f"font_size_{i}")
         text_set["font_color"] = st.color_picker(f"Font Color {i + 1}", text_set["font_color"], key=f"font_color_{i}")
-        text_set["font_weight"] = st.slider(
-            f"Font Weight {i + 1}", 100, 900, text_set["font_weight"], step=100, key=f"font_weight_{i}"
-        )
+        text_set["font_stroke"] = st.slider(f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}")
         text_set["text_opacity"] = st.slider(
             f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}"
         )
@@ -213,6 +242,21 @@ for i, text_set in enumerate(st.session_state.text_sets):
         )
         text_set["y_position"] = st.slider(
             f"Y Position {i + 1}", -400, 400, text_set["y_position"], key=f"y_position_{i}"
+        )
+        text_set["text_transform"] = st.selectbox(
+            f"Text Transform {i + 1}",
+            ["none", "uppercase", "lowercase", "capitalize"],
+            key=f"text_transform_{i}",
+        )
+        text_set["shadow_color"] = st.color_picker(f"Shadow Color {i + 1}", text_set["shadow_color"], key=f"shadow_color_{i}")
+        text_set["shadow_x_offset"] = st.slider(
+            f"Shadow X Offset {i + 1}", -50, 50, text_set["shadow_x_offset"], key=f"shadow_x_offset_{i}"
+        )
+        text_set["shadow_y_offset"] = st.slider(
+            f"Shadow Y Offset {i + 1}", -50, 50, text_set["shadow_y_offset"], key=f"shadow_y_offset_{i}"
+        )
+        text_set["shadow_blur"] = st.slider(
+            f"Shadow Blur {i + 1}", 0, 10, text_set["shadow_blur"], key=f"shadow_blur_{i}"
         )
 
 # Process the uploaded image
