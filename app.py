@@ -64,9 +64,15 @@ def validate_user():
 
 # Redirect user to the login page
 def redirect_to_login():
-    # Clear query parameters (API key) and redirect to login
-    st.experimental_set_query_params()  # Clear query parameters
-    st.markdown(f'<meta http-equiv="refresh" content="0; URL={LOGIN_URL}">', unsafe_allow_html=True)
+    # Clear query parameters (API key)
+    st.experimental_set_query_params()  # Clear any query params
+    # Redirect to external login page using HTML meta refresh
+    login_redirect_html = f"""
+        <meta http-equiv="refresh" content="0; url={LOGIN_URL}">
+        <h4>Redirecting to the login page...</h4>
+        <a href="{LOGIN_URL}">Click here if you are not redirected</a>
+    """
+    st.markdown(login_redirect_html, unsafe_allow_html=True)
     st.stop()
 
 # Logout functionality
