@@ -6,15 +6,11 @@ from io import BytesIO
 import os
 
 # Backend URLs
-CHECK_SESSION_URL = "https://app.ghlsaaskits.com/text-behind-img/check_session.php"
+VALIDATE_API_URL = "https://app.ghlsaaskits.com/text-behind-img/validate_token.php"
 LOGIN_URL = "https://app.ghlsaaskits.com/text-behind-img/login.php"
 
 # Set up Streamlit page
 st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
-
-# Logging for Debugging
-def log_message(message):
-    st.write(f"**Debug:** {message}")
 
 # Sidebar upload/download instructions
 st.sidebar.write("## Upload and download :gear:")
@@ -26,7 +22,6 @@ FONTS_FOLDER = "fonts"
 if not os.path.exists(FONTS_FOLDER):
     os.makedirs(FONTS_FOLDER)
 
-
 # Function to convert an image to bytes for download
 def convert_image(img, format="PNG"):
     buf = BytesIO()
@@ -34,22 +29,37 @@ def convert_image(img, format="PNG"):
     byte_im = buf.getvalue()
     return byte_im
 
-
-# Function to validate session using the token from the URL
-def validate_session(token):
+# Validate user session using the API key (token)
+def validate_user():
+    token = st.experimental_get_query_params().get("token", [None])[0]  # Extract token from URL
+    if not token:
+        st.warning("Missing API token. Redirecting to login...")
+        st.experimental_set_query_params()  # Clear query parameters
+        st.experimental_rerun()
     try:
-        log_message(f"Validating token: {token}")
-        response = requests.get(CHECK_SESSION_URL, params={"token": token})
-        log_message(f"Response from backend: {response.status_code}, {response.text}")
+        response = requests.post(VALIDATE_API_URL, json={"token": token})
         if response.status_code == 200:
             user_data = response.json()
-            if "error" not in user_data:
-                return user_data
-        return None
+            return user_data  # Valid user data
+        else:
+            st.warning("Invalid session. Redirecting to login...")
+            st.experimental_set_query_params()  # Clear query parameters
+            st.experimental_rerun()
     except Exception as e:
-        st.error(f"Error validating session: {e}")
-        return None
+        st.error("Unable to validate session. Please try again.")
+        st.stop()
 
+# Validate user and fetch user data
+user_data = validate_user()
+
+# Check user role and remaining usage
+if user_data["role"] == "free" and user_data["remaining_images"] <= 0:
+    st.error("You have reached your limit of 2 image edits as a free user. Please upgrade your account.")
+    st.stop()
+
+# Display user information and logout option
+st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['email']})")
+st.sidebar.button("Logout", on_click=lambda: st.experimental_set_query_params())  # Clear token on logout
 
 # Function to create grayscale background while keeping the subject colored
 def create_grayscale_with_subject(original_image, subject_image):
@@ -57,7 +67,6 @@ def create_grayscale_with_subject(original_image, subject_image):
     subject_alpha_mask = subject_image.getchannel("A")
     combined_image = Image.composite(subject_image, grayscale_background, subject_alpha_mask)
     return combined_image
-
 
 # Function to process the uploaded image
 def process_image(upload, text_sets):
@@ -137,34 +146,7 @@ def process_image(upload, text_sets):
         col2.download_button("Download Removed Background", convert_image(subject_image), "background_removed.png", "image/png")
 
     except Exception as e:
-        st.error(f"An error occurred while processing the image: {e}")
-
-
-# Get token from the URL
-query_params = st.experimental_get_query_params()
-token = query_params.get("token", [None])[0]
-
-if not token:
-    # If no token, redirect to login page
-    st.error("You are not logged in. Redirecting to login...")
-    st.stop()
-
-# Validate session with the backend
-user_data = validate_session(token)
-if not user_data:
-    st.error("Session expired or invalid. Please log in again.")
-    st.stop()
-
-# Display user information and logout option
-st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['email']})")
-if st.sidebar.button("Logout"):
-    st.experimental_set_query_params()  # Clear parameters
-    st.success("Logged out successfully! Redirecting...")
-    st.stop()
-
-# Main app functionality
-st.title("Text Behind Image Editor")
-st.write(f"Welcome, **{user_data['name']}**!")
+        st.error(f"An error occurred while processing the image: {str(e)}")
 
 # File upload
 my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
@@ -202,14 +184,12 @@ for i, text_set in enumerate(st.session_state.text_sets):
         text_set["font_color"] = st.color_picker(f"Font Color {i + 1}", text_set["font_color"], key=f"font_color_{i}")
         text_set["font_stroke"] = st.slider(f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}")
         text_set["stroke_color"] = st.color_picker(f"Stroke Color {i + 1}", text_set["stroke_color"], key=f"stroke_color_{i}")
-        text_set["text_opacity"] = st.slider(
-            f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}"
-        )
+        text_set["text_opacity"] = st.slider(f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}")
         text_set["rotation"] = st.slider(f"Rotate Text {i + 1}", 0, 360, text_set["rotation"], key=f"rotation_{i}")
         text_set["x_position"] = st.slider(f"X Position {i + 1}", -400, 400, text_set["x_position"], key=f"x_position_{i}")
         text_set["y_position"] = st.slider(f"Y Position {i + 1}", -400, 400, text_set["y_position"], key=f"y_position_{i}")
 
-if my_upload:
+if my_upload is not None:
     if my_upload.size > MAX_FILE_SIZE:
         st.error("The uploaded file is too large. Please upload an image smaller than 5MB.")
     else:
