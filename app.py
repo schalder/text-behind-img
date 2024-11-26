@@ -62,16 +62,17 @@ def validate_user():
         st.error(f"Unable to validate session: {e}. Please try again.")
         st.stop()
 
-
-
-
 # Redirect user to the login page
 def redirect_to_login():
-    st.write("Redirecting to login page...")
-    st.experimental_set_query_params()  # Clear any query params (API key)
-    st.experimental_rerun()
-    # Perform the redirect
+    # Clear query parameters (API key) and redirect to login
+    st.experimental_set_query_params()  # Clear query parameters
+    st.markdown(f'<meta http-equiv="refresh" content="0; URL={LOGIN_URL}">', unsafe_allow_html=True)
     st.stop()
+
+# Logout functionality
+def handle_logout():
+    st.experimental_set_query_params()  # Clear API key from URL
+    redirect_to_login()
 
 # Validate user and fetch user data
 user_data = validate_user()
@@ -87,8 +88,7 @@ st.sidebar.write(f"**Role:** {user_data['role'].capitalize()}")
 
 # Add logout button
 if st.sidebar.button("Logout"):
-    st.experimental_set_query_params()  # Clear API key
-    redirect_to_login()
+    handle_logout()
 
 # Function to create grayscale background while keeping the subject colored
 def create_grayscale_with_subject(original_image, subject_image):
