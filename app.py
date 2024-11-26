@@ -38,16 +38,10 @@ def validate_user():
         st.warning("Missing API key in URL. Redirecting to login...")
         redirect_to_login()
         st.stop()
-
-    # Debugging: Display extracted API key
-    st.write(f"Extracted API Key: {api_key}")  # Debugging purpose only, remove in production
     
-    # Validate API key with the backend
     try:
+        # Validate API key with the backend
         response = requests.post(VALIDATE_API_URL, json={"api_key": api_key})
-        
-        # Debugging: Display backend response
-        st.write(f"Backend Response: {response.text}")  # Debugging purpose only, remove in production
         
         if response.status_code == 200:
             user_data = response.json()
@@ -67,6 +61,7 @@ def validate_user():
     except Exception as e:
         st.error(f"Unable to validate session: {e}. Please try again.")
         st.stop()
+
 
 
 
