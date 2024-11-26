@@ -22,7 +22,11 @@ if not os.path.exists(FONTS_FOLDER):
 def validate_session():
     try:
         # Send the stored cookies to validate the session
-        response = requests.get(CHECK_SESSION_URL, cookies=st.session_state.cookies)
+        cookies = st.session_state.get("cookies", None)
+        if not cookies:
+            return False
+
+        response = requests.get(CHECK_SESSION_URL, cookies=cookies)
         if response.status_code == 200:
             user_data = response.json()
             st.session_state.user_data = user_data
@@ -30,17 +34,19 @@ def validate_session():
         else:
             return False
     except Exception as e:
-        st.error("Unable to validate session. Please check your backend configuration.")
+        st.error(f"Error validating session: {e}")
         return False
 
 # Function to logout
 def logout():
     try:
-        requests.get(LOGOUT_URL, cookies=st.session_state.cookies)
+        cookies = st.session_state.get("cookies", None)
+        if cookies:
+            requests.get(LOGOUT_URL, cookies=cookies)
         st.session_state.clear()
         st.experimental_rerun()
     except Exception as e:
-        st.error("An error occurred during logout.")
+        st.error(f"Error during logout: {e}")
 
 # Initialize session state for cookies and user data
 if "cookies" not in st.session_state:
@@ -49,9 +55,12 @@ if "user_data" not in st.session_state:
     st.session_state.user_data = None
 
 # Redirect to login page if not logged in
-if not st.session_state.cookies or not validate_session():
+if not validate_session():
     st.warning("Redirecting to login page...")
-    st.experimental_redirect(LOGIN_URL)
+    js_redirect = f"""<script>
+    window.location.href = "{LOGIN_URL}";
+    </script>"""
+    st.markdown(js_redirect, unsafe_allow_html=True)
     st.stop()
 
 # User data
@@ -142,7 +151,7 @@ def process_image(upload, text_sets):
         )
 
     except Exception as e:
-        st.error(f"An error occurred while processing the image: {str(e)}")
+        st.error(f"An error occurred while processing the image: {e}")
 
 # File upload
 my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
