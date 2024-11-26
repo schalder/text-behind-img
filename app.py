@@ -44,27 +44,43 @@ def validate_session():
         st.error("Unable to validate session. Please check your backend configuration.")
         return False
 
-# Session Management
+# Initialize session state variables
 if "cookies" not in st.session_state:
     st.session_state.cookies = None
 if "user_data" not in st.session_state:
     st.session_state.user_data = None
 
-# Validate session
+# Validate session or redirect to login
 if not validate_session():
-    st.error("You need to log in to access this application.")
-    # Redirect to login page if session is invalid
-    st.markdown(f'<meta http-equiv="refresh" content="0; url={LOGIN_URL}" />', unsafe_allow_html=True)
+    # Redirect to the login page if session validation fails
+    st.markdown(
+        f"""
+        <script>
+            window.location.href = "{LOGIN_URL}?redirect_to=https://text-behind-img.streamlit.app/";
+        </script>
+        """,
+        unsafe_allow_html=True,
+    )
     st.stop()
 
+# Retrieve user data from session state
 user_data = st.session_state.user_data
 
-# Display user information and logout option
+# Display user information and logout button
 st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['email']})")
 if st.sidebar.button("Logout"):
+    # Logout the user
     requests.get(LOGOUT_URL, cookies=requests.utils.dict_from_cookiejar(st.session_state.cookies))
     st.session_state.clear()
-    st.markdown(f'<meta http-equiv="refresh" content="0; url={LOGIN_URL}" />', unsafe_allow_html=True)
+    # Redirect to login
+    st.markdown(
+        f"""
+        <script>
+            window.location.href = "{LOGIN_URL}";
+        </script>
+        """,
+        unsafe_allow_html=True,
+    )
     st.stop()
 
 # File upload
