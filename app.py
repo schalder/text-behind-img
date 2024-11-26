@@ -8,82 +8,65 @@ import os
 # Backend URLs
 CHECK_SESSION_URL = "https://app.ghlsaaskits.com/text-behind-img/check_session.php"
 LOGIN_URL = "https://app.ghlsaaskits.com/text-behind-img/login.php"
-LOGOUT_URL = "https://app.ghlsaaskits.com/text-behind-img/logout.php"
 
 # Set up Streamlit page
 st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
+
+# Sidebar upload/download instructions
+st.sidebar.write("## Upload and download :gear:")
+
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB max file size
 
 # Ensure the fonts folder exists
 FONTS_FOLDER = "fonts"
 if not os.path.exists(FONTS_FOLDER):
     os.makedirs(FONTS_FOLDER)
 
-# Function to validate session
+
+# Function to validate session using the token
 def validate_session():
-    try:
-        # Send the stored cookies to validate the session
-        cookies = st.session_state.get("cookies", None)
-        if not cookies:
-            return False
+    token = st.experimental_get_query_params().get("token", [None])[0]
+    if not token:
+        st.warning("No token found. Redirecting to login...")
+        st.experimental_set_query_params()  # Clear query params
+        st.stop()
 
-        response = requests.get(CHECK_SESSION_URL, cookies=cookies)
-        if response.status_code == 200:
-            user_data = response.json()
-            st.session_state.user_data = user_data
-            return True
-        else:
-            return False
-    except Exception as e:
-        st.error(f"Error validating session: {e}")
-        return False
+    response = requests.get(CHECK_SESSION_URL, params={"token": token})
+    if response.status_code == 200:
+        user_data = response.json()
+        st.session_state.user_data = user_data
+        st.session_state.token = token
+    else:
+        st.error("Unauthorized. Please log in.")
+        st.experimental_set_query_params()  # Clear query params
+        st.stop()
 
-# Function to logout
-def logout():
-    try:
-        cookies = st.session_state.get("cookies", None)
-        if cookies:
-            requests.get(LOGOUT_URL, cookies=cookies)
-        st.session_state.clear()
-        st.experimental_rerun()
-    except Exception as e:
-        st.error(f"Error during logout: {e}")
 
-# Initialize session state for cookies and user data
-if "cookies" not in st.session_state:
-    st.session_state.cookies = None
-if "user_data" not in st.session_state:
-    st.session_state.user_data = None
+# Function to convert an image to bytes for download
+def convert_image(img, format="PNG"):
+    buf = BytesIO()
+    img.save(buf, format=format)
+    byte_im = buf.getvalue()
+    return byte_im
 
-# Redirect to login page if not logged in
-if not validate_session():
-    st.warning("Redirecting to login page...")
-    js_redirect = f"""<script>
-    window.location.href = "{LOGIN_URL}";
-    </script>"""
-    st.markdown(js_redirect, unsafe_allow_html=True)
-    st.stop()
 
-# User data
-user_data = st.session_state.user_data
-role = user_data.get("role", "free")
-remaining_images = user_data.get("remaining_images", "unlimited")
+# Function to create grayscale background while keeping the subject colored
+def create_grayscale_with_subject(original_image, subject_image):
+    grayscale_background = ImageOps.grayscale(original_image).convert("RGBA")
+    subject_alpha_mask = subject_image.getchannel("A")
+    combined_image = Image.composite(subject_image, grayscale_background, subject_alpha_mask)
+    return combined_image
 
-# Sidebar for user information and logout
-st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['email']})")
-if st.sidebar.button("Logout"):
-    logout()
 
-# Sidebar upload/download instructions
-st.sidebar.write("## Upload and download :gear:")
-MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB max file size
-
-# Function to process image
+# Function to process the uploaded image
 def process_image(upload, text_sets):
     try:
         original_image = Image.open(upload).convert("RGBA")
         subject_image = remove(original_image)
+        grayscale_with_subject = create_grayscale_with_subject(original_image, subject_image)
 
         text_layer = Image.new("RGBA", original_image.size, (255, 255, 255, 0))
+
         for text_set in text_sets:
             custom_text = text_set["text"]
             font_size = text_set["font_size"]
@@ -97,7 +80,6 @@ def process_image(upload, text_sets):
             y_position = text_set["y_position"]
             text_transform = text_set["text_transform"]
 
-            # Transform text
             if text_transform == "uppercase":
                 custom_text = custom_text.upper()
             elif text_transform == "lowercase":
@@ -142,23 +124,98 @@ def process_image(upload, text_sets):
 
         st.write("## Final Image with Text 📝")
         st.image(combined, use_column_width=True)
+        st.sidebar.download_button("Download Final Image", convert_image(combined), "final_image.png", "image/png")
 
-        st.sidebar.download_button(
-            "Download Final Image",
-            convert_image(combined),
-            "final_image.png",
+        col1, col2 = st.columns(2)
+        col1.write("### Grayscale Background Image 🌑")
+        col1.image(grayscale_with_subject, use_column_width=True)
+        col1.download_button(
+            "Download Grayscale Background",
+            convert_image(grayscale_with_subject),
+            "grayscale_with_subject.png",
+            "image/png",
+        )
+
+        col2.write("### Background Removed Image 👤")
+        col2.image(subject_image, use_column_width=True)
+        col2.download_button(
+            "Download Removed Background",
+            convert_image(subject_image),
+            "background_removed.png",
             "image/png",
         )
 
     except Exception as e:
-        st.error(f"An error occurred while processing the image: {e}")
+        st.error(f"An error occurred while processing the image: {str(e)}")
+
+
+# Session Management
+if "user_data" not in st.session_state:
+    validate_session()
+
+user_data = st.session_state.user_data
+
+# Display user info and logout option
+st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['role']})")
+if st.sidebar.button("Logout"):
+    st.session_state.clear()
+    st.experimental_set_query_params()  # Clear query params
+    st.experimental_rerun()
+
+# Apply role restrictions
+if user_data["role"] == "free":
+    st.warning("Free users are limited to generating 2 images.")
+elif user_data["role"] == "pro":
+    st.success("Welcome, Pro user! Enjoy unlimited access.")
+elif user_data["role"] == "admin":
+    st.success("Welcome, Admin! You have full access.")
 
 # File upload
 my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
 
+st.sidebar.write("### Manage Text Sets")
+if "text_sets" not in st.session_state:
+    st.session_state.text_sets = [
+        {
+            "text": "Your Custom Text",
+            "font_size": 150,
+            "font_color": "#FFFFFF",
+            "font_family": "Arial",
+            "font_stroke": 2,
+            "stroke_color": "#000000",
+            "text_opacity": 1.0,
+            "rotation": 0,
+            "x_position": 0,
+            "y_position": 0,
+            "text_transform": "none",
+        }
+    ]
+
+# Render text sets
+for i, text_set in enumerate(st.session_state.text_sets):
+    with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
+        text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}")
+        text_set["font_family"] = st.selectbox(
+            f"Font Family {i + 1}",
+            [f.replace(".ttf", "") for f in os.listdir(FONTS_FOLDER) if f.endswith(".ttf")],
+            key=f"font_family_{i}",
+        )
+        text_set["text_transform"] = st.selectbox(
+            f"Text Transform {i + 1}", ["none", "uppercase", "lowercase", "capitalize"], key=f"text_transform_{i}"
+        )
+        text_set["font_size"] = st.slider(f"Font Size {i + 1}", 10, 400, text_set["font_size"], key=f"font_size_{i}")
+        text_set["font_color"] = st.color_picker(f"Font Color {i + 1}", text_set["font_color"], key=f"font_color_{i}")
+        text_set["font_stroke"] = st.slider(f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}")
+        text_set["stroke_color"] = st.color_picker(f"Stroke Color {i + 1}", text_set["stroke_color"], key=f"stroke_color_{i}")
+        text_set["text_opacity"] = st.slider(f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], key=f"text_opacity_{i}")
+        text_set["rotation"] = st.slider(f"Rotate Text {i + 1}", 0, 360, text_set["rotation"], key=f"rotation_{i}")
+        text_set["x_position"] = st.slider(f"X Position {i + 1}", -400, 400, text_set["x_position"], key=f"x_position_{i}")
+        text_set["y_position"] = st.slider(f"Y Position {i + 1}", -400, 400, text_set["y_position"], key=f"y_position_{i}")
+
+# Process uploaded image
 if my_upload is not None:
-    if role == "free" and remaining_images == 0:
-        st.warning("Upgrade to Pro to use this feature.")
+    if my_upload.size > MAX_FILE_SIZE:
+        st.error("The uploaded file is too large. Please upload an image smaller than 5MB.")
     else:
         process_image(my_upload, st.session_state.text_sets)
 else:
