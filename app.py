@@ -257,7 +257,7 @@ def add_text_set():
 # Function to handle removing a text set
 def remove_text_set(index):
     del st.session_state.text_sets[index]
-    st.experimental_rerun()  # Re-run immediately to refresh the UI
+    st.experimental_rerun()
 
 # Button to add a new text set
 st.sidebar.button("Add Text Set", on_click=add_text_set)
