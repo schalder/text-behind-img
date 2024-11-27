@@ -42,18 +42,8 @@ def redirect_to_login():
     for key in st.session_state.keys():
         del st.session_state[key]
 
-   # Inject the CSS to center-align the logout content
-st.markdown("""
-    <style>
-    .logout-container {
-        text-align: center;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# Display the logout message within a specific div to apply the CSS correctly
-st.markdown(f"""
-    <div class="logout-container">
+    # Display the message and redirect button
+    st.markdown(f"""
         <h4>You have been logged out. Please log in again.</h4>
         <a href="{LOGIN_URL}" style="text-decoration: none;">
            <button style="
@@ -67,12 +57,8 @@ st.markdown(f"""
                Click here to login
            </button>
         </a>
-    </div>
-""", unsafe_allow_html=True)
-
-# Stop further code execution after logout
-st.stop()
-
+    """, unsafe_allow_html=True)
+    st.stop()
 
 # Function to convert an image to bytes for download
 def convert_image(img, format="PNG"):
