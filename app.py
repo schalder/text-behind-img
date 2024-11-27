@@ -220,7 +220,7 @@ def process_image(upload, text_sets):
         col2.download_button("Download Removed Background", convert_image(subject_image), "background_removed.png", "image/png", disabled=download_disabled)
 
         # Decrease remaining images count for free users
-        if user_data["role"] == "free":
+        if user_data["role"] == "free" and not download_disabled:
             st.session_state.remaining_images -= 1
 
     except Exception as e:
@@ -267,8 +267,8 @@ def add_text_set():
 
 # Function to handle removing a text set
 def remove_text_set(index):
-    st.session_state.text_sets.pop(index)
-    st.experimental_rerun()
+    if 0 <= index < len(st.session_state.text_sets):
+        st.session_state.text_sets.pop(index)
 
 # Button to add a new text set
 st.sidebar.button("Add Text Set", on_click=add_text_set)
