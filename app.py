@@ -60,6 +60,13 @@ def redirect_to_login():
     """, unsafe_allow_html=True)
     st.stop()
 
+# Function to convert an image to bytes for download
+def convert_image(img, format="PNG"):
+    buf = BytesIO()
+    img.save(buf, format=format)
+    byte_im = buf.getvalue()
+    return byte_im
+
 # Function to validate the user session using the API key
 def validate_user():
     query_params = st.experimental_get_query_params()
