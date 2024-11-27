@@ -120,7 +120,7 @@ st.sidebar.write(f"**Role:** {user_data['role'].capitalize()}")
 
 # Add logout button
 if st.sidebar.button("Logout"):
-    st.session_state.text_sets = []  # Clear text sets on logout
+    st.session_state.clear()  # Clear all session data
     handle_logout()
 
 # Function to create grayscale background while keeping the subject colored
@@ -252,7 +252,6 @@ def add_text_set():
 # Function to handle removing a text set
 def remove_text_set(index):
     del st.session_state.text_sets[index]
-    st.experimental_rerun()
 
 # Button to add a new text set
 st.sidebar.button("Add Text Set", on_click=add_text_set)
@@ -262,6 +261,8 @@ for i, text_set in enumerate(st.session_state.text_sets):
     with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
         if st.button(f"Remove Text Set {i + 1}", key=f"remove_text_set_{i}"):
             remove_text_set(i)
+            st.experimental_rerun()  # Re-run to refresh the UI after removing the text set
+
         text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}")
         text_set["font_family"] = st.selectbox(
             f"Font Family {i + 1}",
