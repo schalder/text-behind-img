@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 from rembg import remove
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageFilter
 from io import BytesIO
 import os
 
@@ -16,7 +16,7 @@ st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
 # Sidebar upload/download instructions
 st.sidebar.write("## Upload and download :gear:")
 
-MAX_FILE_SIZE = 5 * 1024 * 1024  # 10MB max file size
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB max file size
 
 # Ensure the fonts folder exists
 FONTS_FOLDER = "fonts"
@@ -64,7 +64,7 @@ def redirect_to_login():
 # Function to convert an image to bytes for download
 def convert_image(img, format="PNG"):
     buf = BytesIO()
-    img.save(buf, format=format)
+    img.save(buf, format=format, optimize=True)  # Optimize the image to reduce memory usage
     byte_im = buf.getvalue()
     return byte_im
 
@@ -141,8 +141,15 @@ def create_grayscale_with_subject(original_image, subject_image):
 # Function to process the uploaded image
 def process_image(upload, text_sets):
     try:
-        original_image = Image.open(upload).convert("RGBA")
+        original_image = Image.open(upload)
+        if original_image.mode != 'RGBA':
+            original_image = original_image.convert("RGBA")  # Ensure image is in RGBA format
         subject_image = remove(original_image)
+
+        # Apply Gaussian blur to the alpha channel to avoid harsh edges and shadows
+        subject_alpha_mask = subject_image.getchannel("A").filter(ImageFilter.GaussianBlur(2))
+        subject_image.putalpha(subject_alpha_mask)
+
         grayscale_with_subject = create_grayscale_with_subject(original_image, subject_image)
 
         text_layer = Image.new("RGBA", original_image.size, (255, 255, 255, 0))
@@ -274,8 +281,6 @@ def remove_text_set(index):
         st.warning("You have reached your limit of 2 image edits as a free user. Please upgrade your account to remove text sets.")
     else:
         st.session_state.text_sets.pop(index)
-        # Instead of rerunning, update session state and redraw
-        st.session_state.text_sets = st.session_state.text_sets
 
 # Button to add a new text set
 st.sidebar.button("Add Text Set", on_click=add_text_set, disabled=user_data["role"] == "free" and st.session_state.remaining_images <= 0)
@@ -285,7 +290,7 @@ for i, text_set in enumerate(st.session_state.text_sets):
     with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
         if st.button(f"Remove Text Set {i + 1}", key=f"remove_text_set_{i}", disabled=user_data["role"] == "free" and st.session_state.remaining_images <= 0):
             remove_text_set(i)
-            break
+            st.experimental_rerun()
 
         disabled = user_data["role"] == "free" and st.session_state.remaining_images <= 0
         text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}", disabled=disabled)
@@ -313,7 +318,7 @@ for i, text_set in enumerate(st.session_state.text_sets):
 # Process the uploaded image
 if my_upload is not None:
     if my_upload.size > MAX_FILE_SIZE:
-        st.error("The uploaded file is too large. Please upload an image smaller than 5MB.")
+        st.error("The uploaded file is too large. Please upload an image smaller than 10MB.")
     else:
         if user_data["role"] == "free" and st.session_state.remaining_images <= 0:
             st.error("You have reached your limit of 2 image edits as a free user. Please upgrade your account.")
