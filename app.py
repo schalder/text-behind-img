@@ -147,7 +147,7 @@ def process_image(upload, text_sets):
         subject_image = remove(original_image)
 
         # Remove the shadow by ensuring the edges are smoothed out and blended
-        subject_alpha_mask = subject_image.getchannel("A").filter(ImageFilter.SMOOTH_MORE)
+       subject_alpha_mask = subject_image.getchannel("A").point(lambda p: p > 128 and 255)
         subject_image.putalpha(subject_alpha_mask)
 
         grayscale_with_subject = create_grayscale_with_subject(original_image, subject_image)
