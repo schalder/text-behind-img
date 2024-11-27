@@ -309,8 +309,8 @@ for i, text_set in enumerate(st.session_state.text_sets):
             f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}", disabled=disabled
         )
         text_set["rotation"] = st.slider(f"Rotate Text {i + 1}", 0, 360, text_set["rotation"], key=f"rotation_{i}", disabled=disabled)
-        text_set["x_position"] = st.slider(f"X Position {i + 1}", -600, 600, text_set["x_position"], key=f"x_position_{i}", disabled=disabled)
-        text_set["y_position"] = st.slider(f"Y Position {i + 1}", -600, 600, text_set["y_position"], key=f"y_position_{i}", disabled=disabled)
+        text_set["x_position"] = st.slider(f"X Position {i + 1}", -800, 800, text_set["x_position"], key=f"x_position_{i}", disabled=disabled)
+        text_set["y_position"] = st.slider(f"Y Position {i + 1}", -800, 800, text_set["y_position"], key=f"y_position_{i}", disabled=disabled)
 
 # Process the uploaded image
 if my_upload is not None:
