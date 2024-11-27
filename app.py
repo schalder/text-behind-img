@@ -26,7 +26,7 @@ if not os.path.exists(FONTS_FOLDER):
 def hide_sidebar():
     hide_sidebar_css = """
     <style>
-        section.stSidebar {
+        section.stSidebar.st-emotion-cache-1wqrzgl.eczjsme18 {
             display: none;
         }
     </style>
@@ -69,27 +69,30 @@ def convert_image(img, format="PNG"):
 
 # Function to validate the user session using the API key
 def validate_user():
+    # Extract the API key from the query parameter
     query_params = st.experimental_get_query_params()
     api_key = query_params.get("api_key", [None])[0]
     
     if not api_key:
-        hide_sidebar()
+        hide_sidebar()  # Hide the sidebar if no API key
         st.warning("Click the button below to login")
         redirect_to_login()
         st.stop()
     
     try:
+        # Validate API key with the backend
         response = requests.post(VALIDATE_API_URL, json={"api_key": api_key})
         
         if response.status_code == 200:
             user_data = response.json()
+            # Ensure all required fields are present
             required_fields = ["user_id", "name", "email", "role", "remaining_images"]
             if not all(field in user_data for field in required_fields):
                 st.error("Invalid response from the server. Missing required fields.")
                 st.stop()
             return user_data
         elif response.status_code == 401:
-            hide_sidebar()
+            hide_sidebar()  # Hide the sidebar on invalid API key
             st.warning("Invalid or expired API key. Redirecting to login...")
             redirect_to_login()
             st.stop()
@@ -103,7 +106,7 @@ def validate_user():
 # Logout functionality
 def handle_logout():
     st.experimental_set_query_params()  # Clear API key from URL
-    hide_sidebar()
+    hide_sidebar()  # Hide the sidebar
     redirect_to_login()
 
 # Validate user session
@@ -120,7 +123,9 @@ st.sidebar.write(f"**Role:** {user_data['role'].capitalize()}")
 
 # Add logout button
 if st.sidebar.button("Logout"):
-    st.session_state.clear()  # Clear all session data
+    # Clear all session data
+    st.session_state.clear()
+    # Redirect to login
     handle_logout()
 
 # Function to create grayscale background while keeping the subject colored
@@ -251,7 +256,7 @@ def add_text_set():
 
 # Function to handle removing a text set
 def remove_text_set(index):
-    del st.session_state.text_sets[index]
+    st.session_state.text_sets.pop(index)
 
 # Button to add a new text set
 st.sidebar.button("Add Text Set", on_click=add_text_set)
@@ -261,7 +266,7 @@ for i, text_set in enumerate(st.session_state.text_sets):
     with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
         if st.button(f"Remove Text Set {i + 1}", key=f"remove_text_set_{i}"):
             remove_text_set(i)
-            st.experimental_rerun()  # Re-run to refresh the UI after removing the text set
+            break
 
         text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}")
         text_set["font_family"] = st.selectbox(
