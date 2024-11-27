@@ -112,8 +112,12 @@ def handle_logout():
 # Validate user session
 user_data = validate_user()
 
+# Initialize session state for tracking remaining usage for free users
+if "remaining_images" not in st.session_state:
+    st.session_state.remaining_images = int(user_data["remaining_images"])
+
 # Check user role and remaining usage
-if user_data["role"] == "free" and int(user_data["remaining_images"]) <= 0:
+if user_data["role"] == "free" and st.session_state.remaining_images <= 0:
     st.error("You have reached your limit of 2 image edits as a free user. Please upgrade your account.")
     st.stop()
 
@@ -212,6 +216,10 @@ def process_image(upload, text_sets):
         col2.image(subject_image, use_column_width=True)
         col2.download_button("Download Removed Background", convert_image(subject_image), "background_removed.png", "image/png")
 
+        # Decrease remaining images count for free users
+        if user_data["role"] == "free":
+            st.session_state.remaining_images -= 1
+
     except Exception as e:
         st.error(f"An error occurred while processing the image: {str(e)}")
 
@@ -257,6 +265,7 @@ def add_text_set():
 # Function to handle removing a text set
 def remove_text_set(index):
     st.session_state.text_sets.pop(index)
+    st.experimental_rerun()
 
 # Button to add a new text set
 st.sidebar.button("Add Text Set", on_click=add_text_set)
@@ -266,7 +275,6 @@ for i, text_set in enumerate(st.session_state.text_sets):
     with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
         if st.button(f"Remove Text Set {i + 1}", key=f"remove_text_set_{i}"):
             remove_text_set(i)
-            break
 
         text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}")
         text_set["font_family"] = st.selectbox(
