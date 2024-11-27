@@ -16,7 +16,7 @@ st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
 # Sidebar upload/download instructions
 st.sidebar.write("## Upload and download :gear:")
 
-MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB max file size
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB max file size
 
 # Ensure the fonts folder exists
 FONTS_FOLDER = "fonts"
@@ -64,7 +64,7 @@ def redirect_to_login():
 # Function to convert an image to bytes for download
 def convert_image(img, format="PNG"):
     buf = BytesIO()
-    img.save(buf, format=format, optimize=True)  # Optimize the image to reduce memory usage
+    img.save(buf, format=format)
     byte_im = buf.getvalue()
     return byte_im
 
@@ -141,9 +141,7 @@ def create_grayscale_with_subject(original_image, subject_image):
 # Function to process the uploaded image
 def process_image(upload, text_sets):
     try:
-        original_image = Image.open(upload)
-        if original_image.mode != 'RGBA':
-            original_image = original_image.convert("RGBA")  # Ensure image is in RGBA format
+        original_image = Image.open(upload).convert("RGBA")
         subject_image = remove(original_image)
         grayscale_with_subject = create_grayscale_with_subject(original_image, subject_image)
 
@@ -287,7 +285,7 @@ for i, text_set in enumerate(st.session_state.text_sets):
     with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
         if st.button(f"Remove Text Set {i + 1}", key=f"remove_text_set_{i}", disabled=user_data["role"] == "free" and st.session_state.remaining_images <= 0):
             remove_text_set(i)
-            st.experimental_rerun()
+            break
 
         disabled = user_data["role"] == "free" and st.session_state.remaining_images <= 0
         text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}", disabled=disabled)
@@ -309,13 +307,13 @@ for i, text_set in enumerate(st.session_state.text_sets):
             f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}", disabled=disabled
         )
         text_set["rotation"] = st.slider(f"Rotate Text {i + 1}", 0, 360, text_set["rotation"], key=f"rotation_{i}", disabled=disabled)
-        text_set["x_position"] = st.slider(f"X Position {i + 1}", -800, 800, text_set["x_position"], key=f"x_position_{i}", disabled=disabled)
-        text_set["y_position"] = st.slider(f"Y Position {i + 1}", -800, 800, text_set["y_position"], key=f"y_position_{i}", disabled=disabled)
+        text_set["x_position"] = st.slider(f"X Position {i + 1}", -600, 600, text_set["x_position"], key=f"x_position_{i}", disabled=disabled)
+        text_set["y_position"] = st.slider(f"Y Position {i + 1}", -600, 600, text_set["y_position"], key=f"y_position_{i}", disabled=disabled)
 
 # Process the uploaded image
 if my_upload is not None:
     if my_upload.size > MAX_FILE_SIZE:
-        st.error("The uploaded file is too large. Please upload an image smaller than 5MB.")
+        st.error("The uploaded file is too large. Please upload an image smaller than 10MB.")
     else:
         if user_data["role"] == "free" and st.session_state.remaining_images <= 0:
             st.error("You have reached your limit of 2 image edits as a free user. Please upgrade your account.")
