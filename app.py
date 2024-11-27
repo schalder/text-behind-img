@@ -120,25 +120,6 @@ if "remaining_images" not in st.session_state:
     else:
         st.session_state.remaining_images = float('inf')  # Unlimited for Pro and Admin users
 
-# Check user role and remaining usage
-if user_data["role"] == "free" and st.session_state.remaining_images <= 0:
-    st.error("You have reached your limit of 2 image edits as a free user. Please upgrade your account.")
-    st.markdown(f"""
-        <a href="{UPGRADE_URL}" style="text-decoration: none;">
-           <button style="
-               padding: 10px 20px; 
-               background-color: #007bff; 
-               color: white; 
-               border: none; 
-               border-radius: 5px; 
-               font-size: 16px; 
-               cursor: pointer;">
-               Upgrade Account
-           </button>
-        </a>
-    """, unsafe_allow_html=True)
-    st.stop()
-
 # Display user information and logout option
 st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['email']})")
 st.sidebar.write(f"**Role:** {user_data['role'].capitalize()}")
@@ -223,16 +204,20 @@ def process_image(upload, text_sets):
 
         st.write("## Final Image with Text 📝")
         st.image(combined, use_column_width=True)
-        st.sidebar.download_button("Download Final Image", convert_image(combined), "final_image.png", "image/png")
+
+        # Disable download buttons for free users who reached the limit
+        download_disabled = user_data["role"] == "free" and st.session_state.remaining_images <= 0
+
+        st.sidebar.download_button("Download Final Image", convert_image(combined), "final_image.png", "image/png", disabled=download_disabled)
 
         col1, col2 = st.columns(2)
         col1.write("### Grayscale Background Image 🌑")
         col1.image(grayscale_with_subject, use_column_width=True)
-        col1.download_button("Download Grayscale Background", convert_image(grayscale_with_subject), "grayscale_with_subject.png", "image/png")
+        col1.download_button("Download Grayscale Background", convert_image(grayscale_with_subject), "grayscale_with_subject.png", "image/png", disabled=download_disabled)
 
         col2.write("### Background Removed Image 👤")
         col2.image(subject_image, use_column_width=True)
-        col2.download_button("Download Removed Background", convert_image(subject_image), "background_removed.png", "image/png")
+        col2.download_button("Download Removed Background", convert_image(subject_image), "background_removed.png", "image/png", disabled=download_disabled)
 
         # Decrease remaining images count for free users
         if user_data["role"] == "free":
