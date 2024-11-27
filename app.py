@@ -274,7 +274,8 @@ def remove_text_set(index):
         st.warning("You have reached your limit of 2 image edits as a free user. Please upgrade your account to remove text sets.")
     else:
         st.session_state.text_sets.pop(index)
-        st.experimental_rerun()
+        # Instead of rerunning, update session state and redraw
+        st.session_state.text_sets = st.session_state.text_sets
 
 # Button to add a new text set
 st.sidebar.button("Add Text Set", on_click=add_text_set, disabled=user_data["role"] == "free" and st.session_state.remaining_images <= 0)
