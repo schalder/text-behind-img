@@ -44,7 +44,8 @@ def redirect_to_login():
 
     # Display the message and redirect button
     st.markdown(f"""
-        <h4>You have been logged out. Please log in again.</h4>
+    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh;">
+        <h4 style="text-align: center;">You have been logged out. Please log in again.</h4>
         <a href="{LOGIN_URL}" style="text-decoration: none;">
            <button style="
                padding: 10px 20px; 
@@ -57,8 +58,10 @@ def redirect_to_login():
                Click here to login
            </button>
         </a>
-    """, unsafe_allow_html=True)
-    st.stop()
+    </div>
+""", unsafe_allow_html=True)
+st.stop()
+
 
 # Function to convert an image to bytes for download
 def convert_image(img, format="PNG"):
