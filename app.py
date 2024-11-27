@@ -267,6 +267,7 @@ def add_text_set():
             "text_transform": "none",
         }
     )
+    st.experimental_rerun()
 
 # Function to handle removing a text set
 def remove_text_set(index):
