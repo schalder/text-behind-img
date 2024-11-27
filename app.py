@@ -43,9 +43,8 @@ def redirect_to_login():
         del st.session_state[key]
 
     # Display the message and redirect button
-    st.markdown(f"""
-    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh;">
-        <h4 style="text-align: center;">You have been logged out. Please log in again.</h4>
+st.markdown(f"""
+        <h4>You have been logged out. Please log in again.</h4>
         <a href="{LOGIN_URL}" style="text-decoration: none;">
            <button style="
                padding: 10px 20px; 
@@ -58,9 +57,8 @@ def redirect_to_login():
                Click here to login
            </button>
         </a>
-    </div>
-""", unsafe_allow_html=True)
-st.stop()
+    """, unsafe_allow_html=True)
+    st.stop()
 
 
 # Function to convert an image to bytes for download
