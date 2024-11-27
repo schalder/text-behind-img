@@ -257,6 +257,7 @@ def add_text_set():
 # Function to handle removing a text set
 def remove_text_set(index):
     del st.session_state.text_sets[index]
+    st.experimental_rerun()  # Re-run immediately to refresh the UI
 
 # Button to add a new text set
 st.sidebar.button("Add Text Set", on_click=add_text_set)
@@ -266,8 +267,6 @@ for i, text_set in enumerate(st.session_state.text_sets):
     with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
         if st.button(f"Remove Text Set {i + 1}", key=f"remove_text_set_{i}"):
             remove_text_set(i)
-            st.experimental_rerun()
-
         text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}")
         text_set["font_family"] = st.selectbox(
             f"Font Family {i + 1}",
