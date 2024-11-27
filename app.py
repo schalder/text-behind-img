@@ -42,6 +42,15 @@ def redirect_to_login():
     for key in st.session_state.keys():
         del st.session_state[key]
 
+    # Inject the CSS for centering the markdown content
+st.markdown("""
+    <style>
+    .stMarkdown {
+        text-align: center;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
     # Display the message and redirect button
     st.markdown(f"""
         <h4>You have been logged out. Please log in again.</h4>
