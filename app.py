@@ -121,7 +121,7 @@ if "remaining_images" not in st.session_state:
 if user_data["role"] == "free" and st.session_state.remaining_images <= 0:
     st.error("You have reached your limit of 2 image edits as a free user. Please upgrade your account.")
     if st.button("Upgrade Account"):
-        st.markdown(f"<a href='{UPGRADE_URL}' target='_self'><button style='padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;'>Upgrade Now</button></a>", unsafe_allow_html=True)
+        st.markdown(f"<meta http-equiv='refresh' content='0; url={UPGRADE_URL}'>", unsafe_allow_html=True)
     st.stop()
 
 # Display user information and logout option
