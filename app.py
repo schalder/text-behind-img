@@ -16,7 +16,7 @@ st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
 # Sidebar upload/download instructions
 st.sidebar.write("## Upload and download :gear:")
 
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB max file size
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 10MB max file size
 
 # Ensure the fonts folder exists
 FONTS_FOLDER = "fonts"
@@ -313,7 +313,7 @@ for i, text_set in enumerate(st.session_state.text_sets):
 # Process the uploaded image
 if my_upload is not None:
     if my_upload.size > MAX_FILE_SIZE:
-        st.error("The uploaded file is too large. Please upload an image smaller than 10MB.")
+        st.error("The uploaded file is too large. Please upload an image smaller than 5MB.")
     else:
         if user_data["role"] == "free" and st.session_state.remaining_images <= 0:
             st.error("You have reached your limit of 2 image edits as a free user. Please upgrade your account.")
