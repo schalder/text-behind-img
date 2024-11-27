@@ -147,7 +147,7 @@ def process_image(upload, text_sets):
         subject_image = remove(original_image)
 
         # Apply Gaussian blur to the alpha channel to avoid harsh edges and shadows
-        subject_alpha_mask = subject_image.getchannel("A").filter(ImageFilter.GaussianBlur(2))
+        subject_alpha_mask = subject_image.getchannel("A").filter(ImageFilter.GaussianBlur(0))
         subject_image.putalpha(subject_alpha_mask)
 
         grayscale_with_subject = create_grayscale_with_subject(original_image, subject_image)
