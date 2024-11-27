@@ -8,6 +8,7 @@ import os
 # Backend URLs
 VALIDATE_API_URL = "https://app.ghlsaaskits.com/text-behind-img/validate_api_key.php"
 LOGIN_URL = "https://app.ghlsaaskits.com/text-behind-img/login.php"
+UPGRADE_URL = "https://ghlsaaskits.com/upgrade-tbi"
 
 # Set up Streamlit page
 st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
@@ -122,6 +123,20 @@ if "remaining_images" not in st.session_state:
 # Check user role and remaining usage
 if user_data["role"] == "free" and st.session_state.remaining_images <= 0:
     st.error("You have reached your limit of 2 image edits as a free user. Please upgrade your account.")
+    st.markdown(f"""
+        <a href="{UPGRADE_URL}" style="text-decoration: none;">
+           <button style="
+               padding: 10px 20px; 
+               background-color: #007bff; 
+               color: white; 
+               border: none; 
+               border-radius: 5px; 
+               font-size: 16px; 
+               cursor: pointer;">
+               Upgrade Account
+           </button>
+        </a>
+    """, unsafe_allow_html=True)
     st.stop()
 
 # Display user information and logout option
@@ -305,6 +320,23 @@ if my_upload is not None:
     if my_upload.size > MAX_FILE_SIZE:
         st.error("The uploaded file is too large. Please upload an image smaller than 10MB.")
     else:
-        process_image(my_upload, st.session_state.text_sets)
+        if user_data["role"] == "free" and st.session_state.remaining_images <= 0:
+            st.error("You have reached your limit of 2 image edits as a free user. Please upgrade your account.")
+            st.markdown(f"""
+                <a href="{UPGRADE_URL}" style="text-decoration: none;">
+                   <button style="
+                       padding: 10px 20px; 
+                       background-color: #007bff; 
+                       color: white; 
+                       border: none; 
+                       border-radius: 5px; 
+                       font-size: 16px; 
+                       cursor: pointer;">
+                       Upgrade Account
+                   </button>
+                </a>
+            """, unsafe_allow_html=True)
+        else:
+            process_image(my_upload, st.session_state.text_sets)
 else:
     st.write("Upload an image to begin editing!")
