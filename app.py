@@ -8,6 +8,7 @@ import os
 # Backend URLs
 VALIDATE_API_URL = "https://app.ghlsaaskits.com/text-behind-img/validate_api_key.php"
 LOGIN_URL = "https://app.ghlsaaskits.com/text-behind-img/login.php"
+UPGRADE_URL = "https://app.ghlsaaskits.com/upgrade"  # URL for upgrading account
 
 # Set up Streamlit page
 st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
@@ -112,9 +113,18 @@ def handle_logout():
 # Validate user session
 user_data = validate_user()
 
+# Initialize session state for tracking remaining usage for free users
+if "remaining_images" not in st.session_state:
+    if user_data["role"] == "free":
+        st.session_state.remaining_images = int(user_data["remaining_images"])
+    else:
+        st.session_state.remaining_images = float('inf')  # Unlimited for Pro and Admin users
+
 # Check user role and remaining usage
-if user_data["role"] == "free" and int(user_data["remaining_images"]) <= 0:
+if user_data["role"] == "free" and st.session_state.remaining_images <= 0:
     st.error("You have reached your limit of 2 image edits as a free user. Please upgrade your account.")
+    if st.button("Upgrade Account"):
+        st.markdown(f"<a href='{UPGRADE_URL}' target='_self'><button style='padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;'>Upgrade Now</button></a>", unsafe_allow_html=True)
     st.stop()
 
 # Display user information and logout option
@@ -199,7 +209,7 @@ def process_image(upload, text_sets):
         combined = Image.alpha_composite(original_image.convert("RGBA"), text_layer)
         combined = Image.alpha_composite(combined, subject_image.convert("RGBA"))
 
-        st.write("## Final Image with Text 📝")
+        st.write("## Text Behind Image 📝")
         st.image(combined, use_column_width=True)
         st.sidebar.download_button("Download Final Image", convert_image(combined), "final_image.png", "image/png")
 
@@ -211,6 +221,10 @@ def process_image(upload, text_sets):
         col2.write("### Background Removed Image 👤")
         col2.image(subject_image, use_column_width=True)
         col2.download_button("Download Removed Background", convert_image(subject_image), "background_removed.png", "image/png")
+
+        # Decrease remaining images count for free users
+        if user_data["role"] == "free":
+            st.session_state.remaining_images -= 1
 
     except Exception as e:
         st.error(f"An error occurred while processing the image: {str(e)}")
@@ -253,10 +267,13 @@ def add_text_set():
             "text_transform": "none",
         }
     )
+    st.experimental_rerun()
 
 # Function to handle removing a text set
 def remove_text_set(index):
-    st.session_state.text_sets.pop(index)
+    if index < len(st.session_state.text_sets):
+        st.session_state.text_sets.pop(index)
+        st.experimental_rerun()
 
 # Button to add a new text set
 st.sidebar.button("Add Text Set", on_click=add_text_set)
@@ -266,7 +283,6 @@ for i, text_set in enumerate(st.session_state.text_sets):
     with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
         if st.button(f"Remove Text Set {i + 1}", key=f"remove_text_set_{i}"):
             remove_text_set(i)
-            break
 
         text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}")
         text_set["font_family"] = st.selectbox(
