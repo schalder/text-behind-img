@@ -115,7 +115,10 @@ user_data = validate_user()
 
 # Initialize session state for tracking remaining usage for free users
 if "remaining_images" not in st.session_state:
-    st.session_state.remaining_images = int(user_data["remaining_images"])
+    if user_data["role"] == "free":
+        st.session_state.remaining_images = int(user_data["remaining_images"])
+    else:
+        st.session_state.remaining_images = float('inf')  # Unlimited for Pro and Admin users
 
 # Check user role and remaining usage
 if user_data["role"] == "free" and st.session_state.remaining_images <= 0:
