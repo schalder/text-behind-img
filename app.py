@@ -8,6 +8,7 @@ import os
 # Backend URLs
 VALIDATE_API_URL = "https://app.ghlsaaskits.com/text-behind-img/validate_api_key.php"
 LOGIN_URL = "https://app.ghlsaaskits.com/text-behind-img/login.php"
+UPGRADE_URL = "https://app.ghlsaaskits.com/upgrade"  # URL for upgrading account
 
 # Set up Streamlit page
 st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
@@ -119,6 +120,8 @@ if "remaining_images" not in st.session_state:
 # Check user role and remaining usage
 if user_data["role"] == "free" and st.session_state.remaining_images <= 0:
     st.error("You have reached your limit of 2 image edits as a free user. Please upgrade your account.")
+    if st.button("Upgrade Account"):
+        st.markdown(f"<a href='{UPGRADE_URL}' target='_self'><button style='padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;'>Upgrade Now</button></a>", unsafe_allow_html=True)
     st.stop()
 
 # Display user information and logout option
