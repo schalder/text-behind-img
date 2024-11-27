@@ -64,7 +64,7 @@ def redirect_to_login():
 # Function to convert an image to bytes for download
 def convert_image(img, format="PNG"):
     buf = BytesIO()
-    img.save(buf, format=format)
+    img.save(buf, format=format, optimize=True)  # Optimize the image to reduce memory usage
     byte_im = buf.getvalue()
     return byte_im
 
@@ -141,7 +141,9 @@ def create_grayscale_with_subject(original_image, subject_image):
 # Function to process the uploaded image
 def process_image(upload, text_sets):
     try:
-        original_image = Image.open(upload).convert("RGBA")
+        original_image = Image.open(upload)
+        if original_image.mode != 'RGBA':
+            original_image = original_image.convert("RGBA")  # Ensure image is in RGBA format
         subject_image = remove(original_image)
         grayscale_with_subject = create_grayscale_with_subject(original_image, subject_image)
 
@@ -285,7 +287,7 @@ for i, text_set in enumerate(st.session_state.text_sets):
     with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
         if st.button(f"Remove Text Set {i + 1}", key=f"remove_text_set_{i}", disabled=user_data["role"] == "free" and st.session_state.remaining_images <= 0):
             remove_text_set(i)
-            break
+            st.experimental_rerun()
 
         disabled = user_data["role"] == "free" and st.session_state.remaining_images <= 0
         text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}", disabled=disabled)
