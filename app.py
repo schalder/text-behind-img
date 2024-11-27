@@ -60,39 +60,29 @@ def redirect_to_login():
     """, unsafe_allow_html=True)
     st.stop()
 
-# Function to convert an image to bytes for download
-def convert_image(img, format="PNG"):
-    buf = BytesIO()
-    img.save(buf, format=format)
-    byte_im = buf.getvalue()
-    return byte_im
-
 # Function to validate the user session using the API key
 def validate_user():
-    # Extract the API key from the query parameter
     query_params = st.experimental_get_query_params()
     api_key = query_params.get("api_key", [None])[0]
     
     if not api_key:
-        hide_sidebar()  # Hide the sidebar if no API key
+        hide_sidebar()
         st.warning("Click the button below to login")
         redirect_to_login()
         st.stop()
     
     try:
-        # Validate API key with the backend
         response = requests.post(VALIDATE_API_URL, json={"api_key": api_key})
         
         if response.status_code == 200:
             user_data = response.json()
-            # Ensure all required fields are present
             required_fields = ["user_id", "name", "email", "role", "remaining_images"]
             if not all(field in user_data for field in required_fields):
                 st.error("Invalid response from the server. Missing required fields.")
                 st.stop()
             return user_data
         elif response.status_code == 401:
-            hide_sidebar()  # Hide the sidebar on invalid API key
+            hide_sidebar()
             st.warning("Invalid or expired API key. Redirecting to login...")
             redirect_to_login()
             st.stop()
@@ -106,7 +96,7 @@ def validate_user():
 # Logout functionality
 def handle_logout():
     st.experimental_set_query_params()  # Clear API key from URL
-    hide_sidebar()  # Hide the sidebar
+    hide_sidebar()
     redirect_to_login()
 
 # Validate user session
@@ -123,9 +113,7 @@ st.sidebar.write(f"**Role:** {user_data['role'].capitalize()}")
 
 # Add logout button
 if st.sidebar.button("Logout"):
-    # Clear all session data
-    st.session_state.clear()
-    # Redirect to login
+    st.session_state.text_sets = []  # Clear text sets on logout
     handle_logout()
 
 # Function to create grayscale background while keeping the subject colored
