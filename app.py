@@ -35,7 +35,7 @@ def hide_sidebar():
 
 # Redirect user to the login page
 def redirect_to_login():
-    st.experimental_set_query_params()  # Clear query parameters
+    st.experimental_set_query_params()  # Clear any query params
     st.session_state.clear()
     st.markdown(f"""
         <h4>You have been logged out. Please log in again.</h4>
@@ -155,34 +155,31 @@ if st.sidebar.button("Remove Last Text Set"):
 # Process image
 if uploaded_image:
     try:
-        # Load and process the image
         original_image = Image.open(uploaded_image).convert("RGBA")
         subject_image = remove(original_image)
-        
-        # Combine the original and subject images
+
         text_layer = Image.new("RGBA", original_image.size, (255, 255, 255, 0))
         for text_set in st.session_state.text_sets:
             font_path = os.path.join(FONTS_FOLDER, f"{text_set['font_family']}.ttf")
-            try:
-                font = ImageFont.truetype(font_path, text_set["font_size"])
-            except Exception:
-                font = ImageFont.load_default()
-
-            draw = ImageDraw.Draw(text_layer)
-            r, g, b = tuple(int(text_set["font_color"][i:i+2], 16) for i in (1, 3, 5))
-            draw.text(
+            font = ImageFont.truetype(font_path, text_set["font_size"])
+            text_draw = ImageDraw.Draw(text_layer)
+            text_draw.text(
                 (text_set["x_position"] + original_image.width / 2, text_set["y_position"] + original_image.height / 2),
                 text_set["text"],
-                fill=(r, g, b, int(text_set["text_opacity"] * 255)),
                 font=font,
-                anchor="mm",
+                fill=text_set["font_color"]
             )
 
         combined = Image.alpha_composite(original_image, text_layer)
-        st.image(combined, caption="Processed Image", use_column_width=True)
-        st.sidebar.download_button("Download Image", data=convert_image(combined), file_name="processed_image.png", mime="image/png")
+        st.image(combined, caption="Edited Image", use_column_width=True)
 
+        st.sidebar.download_button(
+            "Download Edited Image",
+            data=BytesIO(combined.tobytes()),
+            file_name="edited_image.png",
+            mime="image/png",
+        )
     except Exception as e:
         st.error(f"An error occurred: {e}")
 else:
-    st.write("Upload an image to begin!")
+    st.write("Upload an image to start editing!")
