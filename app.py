@@ -23,6 +23,13 @@ FONTS_FOLDER = "fonts"
 if not os.path.exists(FONTS_FOLDER):
     os.makedirs(FONTS_FOLDER)
 
+# Load available fonts
+available_fonts = [f.replace(".ttf", "") for f in os.listdir(FONTS_FOLDER) if f.endswith(".ttf")]
+
+# Ensure "Arial Black" is in the available fonts list
+if "Arial Black" not in available_fonts:
+    st.warning("Arial Black font is not available in the uploaded fonts folder. Please upload it to the 'fonts' folder.")
+
 # Function to inject CSS for hiding the sidebar
 def hide_sidebar():
     hide_sidebar_css = """
@@ -220,10 +227,10 @@ st.sidebar.write("### Manage Text Sets")
 if "text_sets" not in st.session_state:
     st.session_state.text_sets = [
         {
-            "text": "Your Custom Text",
+            "text": "Your Text",
             "font_size": 150,
             "font_color": "#FFFFFF",
-            "font_family": "Arial Black",  # Default font updated here
+            "font_family": "Arial Black",  # Default font set here
             "font_stroke": 2,
             "stroke_color": "#000000",
             "text_opacity": 1.0,
@@ -244,7 +251,7 @@ def add_text_set():
                 "text": "New Text",
                 "font_size": 150,
                 "font_color": "#FFFFFF",
-                "font_family": "Arial Black",  # Default font updated here
+                "font_family": "Arial Black",  # Default font set here
                 "font_stroke": 2,
                 "stroke_color": "#000000",
                 "text_opacity": 1.0,
@@ -277,9 +284,10 @@ for i, text_set in enumerate(st.session_state.text_sets):
         text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}", disabled=disabled)
         text_set["font_family"] = st.selectbox(
             f"Font Family {i + 1}",
-            [f.replace(".ttf", "") for f in os.listdir(FONTS_FOLDER) if f.endswith(".ttf")],
+            available_fonts,  # Use available fonts list
             key=f"font_family_{i}",
-            disabled=disabled
+            disabled=disabled,
+            index=available_fonts.index("Arial Black") if "Arial Black" in available_fonts else 0,
         )
         text_set["text_transform"] = st.selectbox(
             f"Text Transform {i + 1}", ["none", "uppercase", "lowercase", "capitalize"], key=f"text_transform_{i}",
