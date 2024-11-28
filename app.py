@@ -301,16 +301,16 @@ for i, text_set in enumerate(st.session_state.text_sets):
             f"Text Transform {i + 1}", ["none", "uppercase", "lowercase", "capitalize"], key=f"text_transform_{i}",
             disabled=disabled
         )
-        st.session_state.text_sets[i]["font_size"] = st.number_input(f"Font Size {i + 1}", min_value=10, max_value=800, value=text_set["font_size"], key=f"font_size_{i}", disabled=disabled, format="%d")
-        st.session_state.text_sets[i]["font_color"] = st.color_picker(f"Font Color {i + 1}", text_set["font_color"], key=f"font_color_{i}", disabled=disabled)
-        st.session_state.text_sets[i]["font_stroke"] = st.number_input(f"Font Stroke {i + 1}", min_value=0, max_value=10, value=text_set["font_stroke"], key=f"font_stroke_{i}", disabled=disabled, format="%d")
-        st.session_state.text_sets[i]["stroke_color"] = st.color_picker(f"Stroke Color {i + 1}", text_set["stroke_color"], key=f"stroke_color_{i}", disabled=disabled)
+        st.session_state.text_sets[i]["font_size"] = st.number_input(f"Font Size {i + 1}", min_value=10, max_value=800, value=st.session_state.text_sets[i]["font_size"], key=f"font_size_{i}", disabled=disabled, format="%d")
+        st.session_state.text_sets[i]["font_color"] = st.color_picker(f"Font Color {i + 1}", st.session_state.text_sets[i]["font_color"], key=f"font_color_{i}", disabled=disabled)
+        st.session_state.text_sets[i]["font_stroke"] = st.number_input(f"Font Stroke {i + 1}", min_value=0, max_value=10, value=st.session_state.text_sets[i]["font_stroke"], key=f"font_stroke_{i}", disabled=disabled, format="%d")
+        st.session_state.text_sets[i]["stroke_color"] = st.color_picker(f"Stroke Color {i + 1}", st.session_state.text_sets[i]["stroke_color"], key=f"stroke_color_{i}", disabled=disabled)
         st.session_state.text_sets[i]["text_opacity"] = st.number_input(
-            f"Text Opacity {i + 1}", min_value=0.1, max_value=1.0, value=text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}", disabled=disabled, format="%.1f"
+            f"Text Opacity {i + 1}", min_value=0.1, max_value=1.0, value=st.session_state.text_sets[i]["text_opacity"], step=0.1, key=f"text_opacity_{i}", disabled=disabled, format="%.1f"
         )
-        st.session_state.text_sets[i]["rotation"] = st.number_input(f"Rotate Text {i + 1}", min_value=0, max_value=360, value=text_set["rotation"], key=f"rotation_{i}", disabled=disabled, format="%d")
-        st.session_state.text_sets[i]["x_position"] = st.number_input(f"X Position {i + 1}", min_value=-800, max_value=800, value=text_set["x_position"], key=f"x_position_{i}", disabled=disabled, format="%d")
-        st.session_state.text_sets[i]["y_position"] = st.number_input(f"Y Position {i + 1}", min_value=-800, max_value=800, value=text_set["y_position"], key=f"y_position_{i}", disabled=disabled, format="%d")
+        st.session_state.text_sets[i]["rotation"] = st.number_input(f"Rotate Text {i + 1}", min_value=0, max_value=360, value=st.session_state.text_sets[i]["rotation"], key=f"rotation_{i}", disabled=disabled, format="%d")
+        st.session_state.text_sets[i]["x_position"] = st.number_input(f"X Position {i + 1}", min_value=-800, max_value=800, value=st.session_state.text_sets[i]["x_position"], key=f"x_position_{i}", disabled=disabled, format="%d")
+        st.session_state.text_sets[i]["y_position"] = st.number_input(f"Y Position {i + 1}", min_value=-800, max_value=800, value=st.session_state.text_sets[i]["y_position"], key=f"y_position_{i}", disabled=disabled, format="%d")
 
 # Process the uploaded image
 if my_upload is not None:
