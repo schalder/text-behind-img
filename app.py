@@ -74,6 +74,12 @@ def handle_logout():
     st.experimental_set_query_params()
     redirect_to_login()
 
+# Convert image to bytes for download
+def convert_image(img, format="PNG"):
+    buf = BytesIO()
+    img.save(buf, format=format)
+    return buf.getvalue()
+
 # Validate user session
 user_data = validate_user()
 
