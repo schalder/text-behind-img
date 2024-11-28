@@ -36,14 +36,10 @@ def hide_sidebar():
 
 # Redirect user to the login page
 def redirect_to_login():
-    # Clear query parameters (API key)
     st.experimental_set_query_params()  # Clear any query params
-
-    # Clear the sidebar content
     for key in st.session_state.keys():
         del st.session_state[key]
 
-    # Display the message and redirect button
     st.markdown(f"""
         <h4>You have been logged out. Please log in again.</h4>
         <a href="{LOGIN_URL}" style="text-decoration: none;">
@@ -65,35 +61,29 @@ def redirect_to_login():
 def convert_image(img, format="PNG"):
     buf = BytesIO()
     img.save(buf, format=format)
-    byte_im = buf.getvalue()
-    return byte_im
+    return buf.getvalue()
 
 # Function to validate the user session using the API key
 def validate_user():
-    # Extract the API key from the query parameter
     query_params = st.experimental_get_query_params()
     api_key = query_params.get("api_key", [None])[0]
-    
     if not api_key:
-        hide_sidebar()  # Hide the sidebar if no API key
+        hide_sidebar()
         st.warning("Click the button below to login")
         redirect_to_login()
         st.stop()
-    
+
     try:
-        # Validate API key with the backend
         response = requests.post(VALIDATE_API_URL, json={"api_key": api_key})
-        
         if response.status_code == 200:
             user_data = response.json()
-            # Ensure all required fields are present
             required_fields = ["user_id", "name", "email", "role", "remaining_images"]
             if not all(field in user_data for field in required_fields):
                 st.error("Invalid response from the server. Missing required fields.")
                 st.stop()
             return user_data
         elif response.status_code == 401:
-            hide_sidebar()  # Hide the sidebar on invalid API key
+            hide_sidebar()
             st.warning("Invalid or expired API key. Redirecting to login...")
             redirect_to_login()
             st.stop()
@@ -106,8 +96,8 @@ def validate_user():
 
 # Logout functionality
 def handle_logout():
-    st.experimental_set_query_params()  # Clear API key from URL
-    hide_sidebar()  # Hide the sidebar
+    st.experimental_set_query_params()
+    hide_sidebar()
     redirect_to_login()
 
 # Validate user session
@@ -124,11 +114,8 @@ if "remaining_images" not in st.session_state:
 st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['email']})")
 st.sidebar.write(f"**Role:** {user_data['role'].capitalize()}")
 
-# Add logout button
 if st.sidebar.button("Logout"):
-    # Clear all session data
     st.session_state.clear()
-    # Redirect to login
     handle_logout()
 
 # Function to create grayscale background while keeping the subject colored
@@ -236,7 +223,7 @@ if "text_sets" not in st.session_state:
             "text": "Your Custom Text",
             "font_size": 150,
             "font_color": "#FFFFFF",
-            "font_family": "Arial",
+            "font_family": "Arial Black",  # Default font updated here
             "font_stroke": 2,
             "stroke_color": "#000000",
             "text_opacity": 1.0,
@@ -257,7 +244,7 @@ def add_text_set():
                 "text": "New Text",
                 "font_size": 150,
                 "font_color": "#FFFFFF",
-                "font_family": "Arial",
+                "font_family": "Arial Black",  # Default font updated here
                 "font_stroke": 2,
                 "stroke_color": "#000000",
                 "text_opacity": 1.0,
@@ -274,7 +261,6 @@ def remove_text_set(index):
         st.warning("You have reached your limit of 2 image edits as a free user. Please upgrade your account to remove text sets.")
     else:
         st.session_state.text_sets.pop(index)
-        # Instead of rerunning, update session state and redraw
         st.session_state.text_sets = st.session_state.text_sets
 
 # Button to add a new text set
