@@ -196,15 +196,34 @@ def process_image(upload, text_sets):
         combined = Image.alpha_composite(original_image.convert("RGBA"), text_layer)
         combined = Image.alpha_composite(combined, subject_image.convert("RGBA"))
 
-        return combined, grayscale_with_subject, subject_image
+        st.write("## Final Image with Text 📝")
+        st.image(combined, use_column_width=True)
+
+        # Disable download buttons for free users who reached the limit
+        download_disabled = user_data["role"] == "free" and st.session_state.remaining_images <= 0
+
+        st.sidebar.download_button("Download Final Image", convert_image(combined), "final_image.png", "image/png", disabled=download_disabled)
+
+        col1, col2 = st.columns(2)
+        col1.write("### Grayscale Background Image 🌑")
+        col1.image(grayscale_with_subject, use_column_width=True)
+        col1.download_button("Download Grayscale Background", convert_image(grayscale_with_subject), "grayscale_with_subject.png", "image/png", disabled=download_disabled)
+
+        col2.write("### Background Removed Image 👤")
+        col2.image(subject_image, use_column_width=True)
+        col2.download_button("Download Removed Background", convert_image(subject_image), "background_removed.png", "image/png", disabled=download_disabled)
+
+        # Decrease remaining images count for free users
+        if user_data["role"] == "free" and not download_disabled:
+            st.session_state.remaining_images -= 1
 
     except Exception as e:
         st.error(f"An error occurred while processing the image: {str(e)}")
-        return None, None, None
 
 # File upload
 my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
 
+st.sidebar.write("### Manage Text Sets")
 if "text_sets" not in st.session_state:
     st.session_state.text_sets = [
         {
@@ -221,9 +240,6 @@ if "text_sets" not in st.session_state:
             "text_transform": "none",
         }
     ]
-
-if "confirm_updates" not in st.session_state:
-    st.session_state.confirm_updates = {i: False for i in range(len(st.session_state.text_sets))}
 
 # Function to handle adding a new text set
 def add_text_set():
@@ -245,58 +261,129 @@ def add_text_set():
                 "text_transform": "none",
             }
         )
-        st.session_state.confirm_updates[len(st.session_state.text_sets) - 1] = False
-
 # Function to handle removing a text set
 def remove_text_set(index):
     if user_data["role"] == "free" and st.session_state.remaining_images <= 0:
         st.warning("You have reached your limit of 2 image edits as a free user. Please upgrade your account to remove text sets.")
     else:
         st.session_state.text_sets.pop(index)
-        del st.session_state.confirm_updates[index]
-        st.session_state.confirm_updates = {i: st.session_state.confirm_updates.get(i, False) for i in range(len(st.session_state.text_sets))}
+        st.session_state.text_sets = st.session_state.text_sets
 
+# Function to trigger re-rendering the image only on confirmation
+def confirm_update(index):
+    st.session_state[f"confirmed_{index}"] = True  # Mark the update as confirmed
+
+# Button to add a new text set
 st.sidebar.button("Add Text Set", on_click=add_text_set, disabled=user_data["role"] == "free" and st.session_state.remaining_images <= 0)
 
 # Render each text set with collapsible editors
-updated_image = None
-grayscale_with_subject = None
-subject_image = None
+for i, text_set in enumerate(st.session_state.text_sets):
+    with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
+        if st.button(f"Remove Text Set {i + 1}", key=f"remove_text_set_{i}", disabled=user_data["role"] == "free" and st.session_state.remaining_images <= 0):
+            remove_text_set(i)
+            break
 
+        disabled = user_data["role"] == "free" and st.session_state.remaining_images <= 0
+
+        # Initialize confirmation state
+        if f"confirmed_{i}" not in st.session_state:
+            st.session_state[f"confirmed_{i}"] = True  # Initially confirmed
+
+        # Text input
+        new_text = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}", disabled=disabled)
+        if new_text != text_set["text"]:
+            text_set["text"] = new_text
+            st.session_state[f"confirmed_{i}"] = False
+            if st.button("Confirm Update", key=f"confirm_text_{i}"):
+                confirm_update(i)
+
+        # Font family
+        new_font_family = st.selectbox(
+            f"Font Family {i + 1}",
+            available_fonts,
+            index=available_fonts.index(text_set["font_family"]) if text_set["font_family"] in available_fonts else 0,
+            key=f"font_family_{i}",
+            disabled=disabled
+        )
+        if new_font_family != text_set["font_family"]:
+            text_set["font_family"] = new_font_family
+            st.session_state[f"confirmed_{i}"] = False
+            if st.button("Confirm Update", key=f"confirm_font_{i}"):
+                confirm_update(i)
+
+        # Font size
+        new_font_size = st.slider(f"Font Size {i + 1}", 10, 1200, text_set["font_size"], key=f"font_size_{i}", disabled=disabled)
+        if new_font_size != text_set["font_size"]:
+            text_set["font_size"] = new_font_size
+            st.session_state[f"confirmed_{i}"] = False
+            if st.button("Confirm Update", key=f"confirm_font_size_{i}"):
+                confirm_update(i)
+
+        # Font color
+        new_font_color = st.color_picker(f"Font Color {i + 1}", text_set["font_color"], key=f"font_color_{i}", disabled=disabled)
+        if new_font_color != text_set["font_color"]:
+            text_set["font_color"] = new_font_color
+            st.session_state[f"confirmed_{i}"] = False
+            if st.button("Confirm Update", key=f"confirm_color_{i}"):
+                confirm_update(i)
+
+        # Font stroke
+        new_font_stroke = st.slider(f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}", disabled=disabled)
+        if new_font_stroke != text_set["font_stroke"]:
+            text_set["font_stroke"] = new_font_stroke
+            st.session_state[f"confirmed_{i}"] = False
+            if st.button("Confirm Update", key=f"confirm_stroke_{i}"):
+                confirm_update(i)
+
+        # Stroke color
+        new_stroke_color = st.color_picker(f"Stroke Color {i + 1}", text_set["stroke_color"], key=f"stroke_color_{i}", disabled=disabled)
+        if new_stroke_color != text_set["stroke_color"]:
+            text_set["stroke_color"] = new_stroke_color
+            st.session_state[f"confirmed_{i}"] = False
+            if st.button("Confirm Update", key=f"confirm_stroke_color_{i}"):
+                confirm_update(i)
+
+        # Text opacity
+        new_text_opacity = st.slider(
+            f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}", disabled=disabled
+        )
+        if new_text_opacity != text_set["text_opacity"]:
+            text_set["text_opacity"] = new_text_opacity
+            st.session_state[f"confirmed_{i}"] = False
+            if st.button("Confirm Update", key=f"confirm_opacity_{i}"):
+                confirm_update(i)
+
+        # Rotation
+        new_rotation = st.slider(f"Rotate Text {i + 1}", 0, 360, text_set["rotation"], key=f"rotation_{i}", disabled=disabled)
+        if new_rotation != text_set["rotation"]:
+            text_set["rotation"] = new_rotation
+            st.session_state[f"confirmed_{i}"] = False
+            if st.button("Confirm Update", key=f"confirm_rotation_{i}"):
+                confirm_update(i)
+
+        # X position
+        new_x_position = st.slider(f"X Position {i + 1}", -800, 800, text_set["x_position"], key=f"x_position_{i}", disabled=disabled)
+        if new_x_position != text_set["x_position"]:
+            text_set["x_position"] = new_x_position
+            st.session_state[f"confirmed_{i}"] = False
+            if st.button("Confirm Update", key=f"confirm_x_{i}"):
+                confirm_update(i)
+
+        # Y position
+        new_y_position = st.slider(f"Y Position {i + 1}", -800, 800, text_set["y_position"], key=f"y_position_{i}", disabled=disabled)
+        if new_y_position != text_set["y_position"]:
+            text_set["y_position"] = new_y_position
+            st.session_state[f"confirmed_{i}"] = False
+            if st.button("Confirm Update", key=f"confirm_y_{i}"):
+                confirm_update(i)
+
+# Process the uploaded image only if all changes are confirmed
 if my_upload is not None:
-    for i, text_set in enumerate(st.session_state.text_sets):
-        with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
-            if st.button(f"Remove Text Set {i + 1}", key=f"remove_text_set_{i}", disabled=user_data["role"] == "free" and st.session_state.remaining_images <= 0):
-                remove_text_set(i)
-                break
-
-            disabled = user_data["role"] == "free" and st.session_state.remaining_images <= 0
-
-            text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}", disabled=disabled)
-            font_family = st.selectbox(
-                f"Font Family {i + 1}",
-                available_fonts,
-                key=f"font_family_{i}",
-                disabled=disabled,
-                index=available_fonts.index(text_set["font_family"]) if text_set["font_family"] in available_fonts else 0,
-            )
-            if font_family != text_set["font_family"]:
-                text_set["font_family"] = font_family
-                st.session_state.confirm_updates[i] = True
-
-            for field, label, key, slider_min, slider_max, step in [
-                ("font_size", "Font Size", "font_size", 10, 1200, 10),
-                ("font_stroke", "Font Stroke", "font_stroke", 0, 10, 1),
-                ("rotation", "Rotate Text", "rotation", 0, 360, 1),
-                ("x_position", "X Position", "x_position", -800, 800, 10),
-                ("y_position", "Y Position", "y_position", -800, 800, 10),
-            ]:
-                value = st.slider(label, slider_min, slider_max, text_set[field], key=f"{key}_{i}", step=step, disabled=disabled)
-                if value != text_set[field]:
-                    text_set[field] = value
-                    st.session_state.confirm_updates[i] = True
-
-            if st.session_state.confirm_updates.get(i, False):
-                if st.button(f"Confirm Updates {i + 1}", key=f"confirm_{i}"):
-                    st.session_state.confirm_updates[i] = False
-                    updated_image, grayscale_with_subject, subject_image = process_image(my_upload, st.session_state.text_sets)
+    if my_upload.size > MAX_FILE_SIZE:
+        st.error("The uploaded file is too large. Please upload an image smaller than 7MB.")
+    elif all(st.session_state.get(f"confirmed_{i}", True) for i in range(len(st.session_state.text_sets))):
+        process_image(my_upload, st.session_state.text_sets)
+    else:
+        st.warning("Make changes and click 'Confirm Update' to apply your changes.")
+else:
+    st.write("Upload an image to begin editing!")
