@@ -8,6 +8,7 @@ import os
 # Backend URLs
 VALIDATE_API_URL = "https://app.ghlsaaskits.com/text-behind-img/validate_api_key.php"
 LOGIN_URL = "https://app.ghlsaaskits.com/text-behind-img/login.php"
+UPGRADE_URL = "https://ghlsaaskits.com/upgrade-tbi"
 
 # Set up Streamlit page
 st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
@@ -112,10 +113,12 @@ def handle_logout():
 # Validate user session
 user_data = validate_user()
 
-# Check user role and remaining usage
-if user_data["role"] == "free" and int(user_data["remaining_images"]) <= 0:
-    st.error("You have reached your limit of 2 image edits as a free user. Please upgrade your account.")
-    st.stop()
+# Initialize session state for tracking remaining usage for free users
+if "remaining_images" not in st.session_state:
+    if user_data["role"] == "free":
+        st.session_state.remaining_images = int(user_data["remaining_images"])
+    else:
+        st.session_state.remaining_images = float('inf')  # Unlimited for Pro and Admin users
 
 # Display user information and logout option
 st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['email']})")
@@ -201,16 +204,24 @@ def process_image(upload, text_sets):
 
         st.write("## Final Image with Text 📝")
         st.image(combined, use_column_width=True)
-        st.sidebar.download_button("Download Final Image", convert_image(combined), "final_image.png", "image/png")
+
+        # Disable download buttons for free users who reached the limit
+        download_disabled = user_data["role"] == "free" and st.session_state.remaining_images <= 0
+
+        st.sidebar.download_button("Download Final Image", convert_image(combined), "final_image.png", "image/png", disabled=download_disabled)
 
         col1, col2 = st.columns(2)
         col1.write("### Grayscale Background Image 🌑")
         col1.image(grayscale_with_subject, use_column_width=True)
-        col1.download_button("Download Grayscale Background", convert_image(grayscale_with_subject), "grayscale_with_subject.png", "image/png")
+        col1.download_button("Download Grayscale Background", convert_image(grayscale_with_subject), "grayscale_with_subject.png", "image/png", disabled=download_disabled)
 
         col2.write("### Background Removed Image 👤")
         col2.image(subject_image, use_column_width=True)
-        col2.download_button("Download Removed Background", convert_image(subject_image), "background_removed.png", "image/png")
+        col2.download_button("Download Removed Background", convert_image(subject_image), "background_removed.png", "image/png", disabled=download_disabled)
+
+        # Decrease remaining images count for free users
+        if user_data["role"] == "free" and not download_disabled:
+            st.session_state.remaining_images -= 1
 
     except Exception as e:
         st.error(f"An error occurred while processing the image: {str(e)}")
@@ -238,61 +249,89 @@ if "text_sets" not in st.session_state:
 
 # Function to handle adding a new text set
 def add_text_set():
-    st.session_state.text_sets.append(
-        {
-            "text": "New Text",
-            "font_size": 150,
-            "font_color": "#FFFFFF",
-            "font_family": "Arial",
-            "font_stroke": 2,
-            "stroke_color": "#000000",
-            "text_opacity": 1.0,
-            "rotation": 0,
-            "x_position": 0,
-            "y_position": 0,
-            "text_transform": "none",
-        }
-    )
+    if user_data["role"] == "free" and st.session_state.remaining_images <= 0:
+        st.warning("You have reached your limit of 2 image edits as a free user. Please upgrade your account to add more text sets.")
+    else:
+        st.session_state.text_sets.append(
+            {
+                "text": "New Text",
+                "font_size": 150,
+                "font_color": "#FFFFFF",
+                "font_family": "Arial",
+                "font_stroke": 2,
+                "stroke_color": "#000000",
+                "text_opacity": 1.0,
+                "rotation": 0,
+                "x_position": 0,
+                "y_position": 0,
+                "text_transform": "none",
+            }
+        )
 
 # Function to handle removing a text set
 def remove_text_set(index):
-    st.session_state.text_sets.pop(index)
+    if user_data["role"] == "free" and st.session_state.remaining_images <= 0:
+        st.warning("You have reached your limit of 2 image edits as a free user. Please upgrade your account to remove text sets.")
+    else:
+        st.session_state.text_sets.pop(index)
+        # Instead of rerunning, update session state and redraw
+        st.session_state.text_sets = st.session_state.text_sets
 
 # Button to add a new text set
-st.sidebar.button("Add Text Set", on_click=add_text_set)
+st.sidebar.button("Add Text Set", on_click=add_text_set, disabled=user_data["role"] == "free" and st.session_state.remaining_images <= 0)
 
 # Render each text set with collapsible editors
 for i, text_set in enumerate(st.session_state.text_sets):
     with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
-        if st.button(f"Remove Text Set {i + 1}", key=f"remove_text_set_{i}"):
+        if st.button(f"Remove Text Set {i + 1}", key=f"remove_text_set_{i}", disabled=user_data["role"] == "free" and st.session_state.remaining_images <= 0):
             remove_text_set(i)
             break
 
-        text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}")
+        disabled = user_data["role"] == "free" and st.session_state.remaining_images <= 0
+        text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}", disabled=disabled)
         text_set["font_family"] = st.selectbox(
             f"Font Family {i + 1}",
             [f.replace(".ttf", "") for f in os.listdir(FONTS_FOLDER) if f.endswith(".ttf")],
             key=f"font_family_{i}",
+            disabled=disabled
         )
         text_set["text_transform"] = st.selectbox(
-            f"Text Transform {i + 1}", ["none", "uppercase", "lowercase", "capitalize"], key=f"text_transform_{i}"
+            f"Text Transform {i + 1}", ["none", "uppercase", "lowercase", "capitalize"], key=f"text_transform_{i}",
+            disabled=disabled
         )
-        text_set["font_size"] = st.slider(f"Font Size {i + 1}", 10, 800, text_set["font_size"], key=f"font_size_{i}")
-        text_set["font_color"] = st.color_picker(f"Font Color {i + 1}", text_set["font_color"], key=f"font_color_{i}")
-        text_set["font_stroke"] = st.slider(f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}")
-        text_set["stroke_color"] = st.color_picker(f"Stroke Color {i + 1}", text_set["stroke_color"], key=f"stroke_color_{i}")
+        text_set["font_size"] = st.slider(f"Font Size {i + 1}", 10, 800, text_set["font_size"], key=f"font_size_{i}", disabled=disabled)
+        text_set["font_color"] = st.color_picker(f"Font Color {i + 1}", text_set["font_color"], key=f"font_color_{i}", disabled=disabled)
+        text_set["font_stroke"] = st.slider(f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}", disabled=disabled)
+        text_set["stroke_color"] = st.color_picker(f"Stroke Color {i + 1}", text_set["stroke_color"], key=f"stroke_color_{i}", disabled=disabled)
         text_set["text_opacity"] = st.slider(
-            f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}"
+            f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}", disabled=disabled
         )
-        text_set["rotation"] = st.slider(f"Rotate Text {i + 1}", 0, 360, text_set["rotation"], key=f"rotation_{i}")
-        text_set["x_position"] = st.slider(f"X Position {i + 1}", -600, 600, text_set["x_position"], key=f"x_position_{i}")
-        text_set["y_position"] = st.slider(f"Y Position {i + 1}", -600, 600, text_set["y_position"], key=f"y_position_{i}")
+        text_set["rotation"] = st.slider(f"Rotate Text {i + 1}", 0, 360, text_set["rotation"], key=f"rotation_{i}", disabled=disabled)
+        text_set["x_position"] = st.slider(f"X Position {i + 1}", -600, 600, text_set["x_position"], key=f"x_position_{i}", disabled=disabled)
+        text_set["y_position"] = st.slider(f"Y Position {i + 1}", -600, 600, text_set["y_position"], key=f"y_position_{i}", disabled=disabled)
 
 # Process the uploaded image
 if my_upload is not None:
     if my_upload.size > MAX_FILE_SIZE:
         st.error("The uploaded file is too large. Please upload an image smaller than 10MB.")
     else:
-        process_image(my_upload, st.session_state.text_sets)
+        if user_data["role"] == "free" and st.session_state.remaining_images <= 0:
+            st.error("You have reached your limit of 2 image edits as a free user. Please upgrade your account.")
+            st.markdown(f"""
+                <a href="{UPGRADE_URL}" style="text-decoration: none;">
+                   <button style="
+                       padding: 10px 20px; 
+                       background-color: #007bff; 
+                       color: white; 
+                       border: none; 
+                       border-radius: 5px; 
+                       font-size: 16px; 
+                       cursor: pointer;">
+                       Upgrade Account
+                   </button>
+                </a>
+            """, unsafe_allow_html=True)
+        else:
+            process_image(my_upload, st.session_state.text_sets)
 else:
     st.write("Upload an image to begin editing!")
