@@ -16,7 +16,7 @@ st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
 # Sidebar upload/download instructions
 st.sidebar.write("## Upload and download :gear:")
 
-MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB max file size
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB max file size
 
 # Ensure the fonts folder exists
 FONTS_FOLDER = "fonts"
@@ -149,15 +149,15 @@ def process_image(upload, text_sets):
 
         for text_set in text_sets:
             custom_text = text_set["text"]
-            font_size = int(text_set["font_size"])
+            font_size = text_set["font_size"]
             font_color = text_set["font_color"]
             font_family = text_set["font_family"]
             font_stroke = text_set["font_stroke"]
             stroke_color = text_set["stroke_color"]
             text_opacity = text_set["text_opacity"]
             rotation = text_set["rotation"]
-            x_position = int(text_set["x_position"])
-            y_position = int(text_set["y_position"])
+            x_position = text_set["x_position"]
+            y_position = text_set["y_position"]
             text_transform = text_set["text_transform"]
 
             if text_transform == "uppercase":
@@ -285,7 +285,7 @@ for i, text_set in enumerate(st.session_state.text_sets):
     with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
         if st.button(f"Remove Text Set {i + 1}", key=f"remove_text_set_{i}", disabled=user_data["role"] == "free" and st.session_state.remaining_images <= 0):
             remove_text_set(i)
-            break
+            st.experimental_rerun()
 
         disabled = user_data["role"] == "free" and st.session_state.remaining_images <= 0
         text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}", disabled=disabled)
@@ -299,7 +299,7 @@ for i, text_set in enumerate(st.session_state.text_sets):
             f"Text Transform {i + 1}", ["none", "uppercase", "lowercase", "capitalize"], key=f"text_transform_{i}",
             disabled=disabled
         )
-        text_set["font_size"] = st.number_input(f"Font Size {i + 1}", min_value=10, max_value=900, value=text_set["font_size"], key=f"font_size_{i}", disabled=disabled)
+        text_set["font_size"] = st.number_input(f"Font Size {i + 1}", min_value=10, max_value=800, value=text_set["font_size"], key=f"font_size_{i}", disabled=disabled)
         text_set["font_color"] = st.color_picker(f"Font Color {i + 1}", text_set["font_color"], key=f"font_color_{i}", disabled=disabled)
         text_set["font_stroke"] = st.slider(f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}", disabled=disabled)
         text_set["stroke_color"] = st.color_picker(f"Stroke Color {i + 1}", text_set["stroke_color"], key=f"stroke_color_{i}", disabled=disabled)
@@ -313,7 +313,7 @@ for i, text_set in enumerate(st.session_state.text_sets):
 # Process the uploaded image
 if my_upload is not None:
     if my_upload.size > MAX_FILE_SIZE:
-        st.error("The uploaded file is too large. Please upload an image smaller than 5MB.")
+        st.error("The uploaded file is too large. Please upload an image smaller than 10MB.")
     else:
         if user_data["role"] == "free" and st.session_state.remaining_images <= 0:
             st.error("You have reached your limit of 2 image edits as a free user. Please upgrade your account.")
