@@ -272,6 +272,9 @@ def add_text_set():
         }
     )
 
+def remove_text_set(index):
+    st.session_state.text_sets.pop(index)
+
 if st.sidebar.button("Add Text Set"):
     add_text_set()
 
@@ -288,6 +291,9 @@ for i, text_set in enumerate(st.session_state.text_sets):
         text_set["rotation"] = st.slider(f"Rotate Text {i + 1}", 0, 360, text_set["rotation"], key=f"rotation_{i}")
         text_set["x_position"] = st.slider(f"X Position {i + 1}", -800, 800, text_set["x_position"], key=f"x_position_{i}")
         text_set["y_position"] = st.slider(f"Y Position {i + 1}", -800, 800, text_set["y_position"], key=f"y_position_{i}")
+        if st.button(f"Remove Text Set {i + 1}", key=f"remove_text_set_{i}"):
+            remove_text_set(i)
+            break
 
 if my_upload:
     if my_upload.size > MAX_FILE_SIZE:
