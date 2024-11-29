@@ -298,27 +298,28 @@ for i, text_set in enumerate(st.session_state.text_sets):
 if my_upload:
     if my_upload.size > MAX_FILE_SIZE:
         st.error("The uploaded file is too large. Please upload an image smaller than 7MB.")
+    elif st.session_state.remaining_images > 0 or user_data["role"] != "free":
+        process_image(my_upload, st.session_state.text_sets)
     else:
-        if st.session_state.remaining_images > 0 or user_data["role"] != "free":
-            process_image(my_upload, st.session_state.text_sets)
-        else:
-            st.error("You have reached your limit of 2 image edits as a free user. Please upgrade your account.")
-            st.markdown(f"""
-                <a href="{UPGRADE_URL}" style="text-decoration: none;">
-                   <button style="
-                       padding: 10px 20px; 
-                       background-color: #007bff; 
-                       color: white; 
-                       border: none; 
-                       border-radius: 5px; 
-                       font-size: 16px; 
-                       cursor: pointer;">
-                       Upgrade Account
-                   </button>
-                </a>
-            """, unsafe_allow_html=True)
-else:
+        st.error("You have reached your limit of 2 image edits as a free user. Please upgrade your account.")
+        st.markdown(f"""
+            <a href="{UPGRADE_URL}" style="text-decoration: none;">
+               <button style="
+                   padding: 10px 20px; 
+                   background-color: #007bff; 
+                   color: white; 
+                   border: none; 
+                   border-radius: 5px; 
+                   font-size: 16px; 
+                   cursor: pointer;">
+                   Upgrade Account
+               </button>
+            </a>
+        """, unsafe_allow_html=True)
+elif not st.session_state.get("image_processed", False):
+    # Show this message only if no image is uploaded or processed
     st.write("Upload an image to begin editing!")
+
 
 
 # Add Admin Dashboard button (visible only for admin users)
