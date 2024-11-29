@@ -196,7 +196,7 @@ def process_image(upload, text_sets):
         combined = Image.alpha_composite(original_image.convert("RGBA"), text_layer)
         combined = Image.alpha_composite(combined, subject_image.convert("RGBA"))
 
-        st.write("## Final Image with Text 📝")
+        st.write("## Text Behind Image 📝")
         st.image(combined, use_column_width=True)
 
         # Disable download buttons for free users who reached the limit
