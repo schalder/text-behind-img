@@ -16,12 +16,19 @@ st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
 # Sidebar upload/download instructions
 st.sidebar.write("## Upload and download :gear:")
 
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB max file size
+MAX_FILE_SIZE = 7 * 1024 * 1024  # 10MB max file size
 
 # Ensure the fonts folder exists
 FONTS_FOLDER = "fonts"
 if not os.path.exists(FONTS_FOLDER):
     os.makedirs(FONTS_FOLDER)
+
+# Load available fonts
+available_fonts = [f.replace(".ttf", "") for f in os.listdir(FONTS_FOLDER) if f.endswith(".ttf")]
+
+# Ensure "Arial Black" is in the available fonts list
+if "Arial Black" not in available_fonts:
+    st.warning("Arial Black font is not available in the uploaded fonts folder. Please upload it to the 'fonts' folder.")
 
 # Function to inject CSS for hiding the sidebar
 def hide_sidebar():
@@ -36,14 +43,10 @@ def hide_sidebar():
 
 # Redirect user to the login page
 def redirect_to_login():
-    # Clear query parameters (API key)
     st.experimental_set_query_params()  # Clear any query params
-
-    # Clear the sidebar content
     for key in st.session_state.keys():
         del st.session_state[key]
 
-    # Display the message and redirect button
     st.markdown(f"""
         <h4>You have been logged out. Please log in again.</h4>
         <a href="{LOGIN_URL}" style="text-decoration: none;">
@@ -65,35 +68,29 @@ def redirect_to_login():
 def convert_image(img, format="PNG"):
     buf = BytesIO()
     img.save(buf, format=format)
-    byte_im = buf.getvalue()
-    return byte_im
+    return buf.getvalue()
 
 # Function to validate the user session using the API key
 def validate_user():
-    # Extract the API key from the query parameter
     query_params = st.experimental_get_query_params()
     api_key = query_params.get("api_key", [None])[0]
-    
     if not api_key:
-        hide_sidebar()  # Hide the sidebar if no API key
+        hide_sidebar()
         st.warning("Click the button below to login")
         redirect_to_login()
         st.stop()
-    
+
     try:
-        # Validate API key with the backend
         response = requests.post(VALIDATE_API_URL, json={"api_key": api_key})
-        
         if response.status_code == 200:
             user_data = response.json()
-            # Ensure all required fields are present
             required_fields = ["user_id", "name", "email", "role", "remaining_images"]
             if not all(field in user_data for field in required_fields):
                 st.error("Invalid response from the server. Missing required fields.")
                 st.stop()
             return user_data
         elif response.status_code == 401:
-            hide_sidebar()  # Hide the sidebar on invalid API key
+            hide_sidebar()
             st.warning("Invalid or expired API key. Redirecting to login...")
             redirect_to_login()
             st.stop()
@@ -106,8 +103,8 @@ def validate_user():
 
 # Logout functionality
 def handle_logout():
-    st.experimental_set_query_params()  # Clear API key from URL
-    hide_sidebar()  # Hide the sidebar
+    st.experimental_set_query_params()
+    hide_sidebar()
     redirect_to_login()
 
 # Validate user session
@@ -124,11 +121,8 @@ if "remaining_images" not in st.session_state:
 st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['email']})")
 st.sidebar.write(f"**Role:** {user_data['role'].capitalize()}")
 
-# Add logout button
 if st.sidebar.button("Logout"):
-    # Clear all session data
     st.session_state.clear()
-    # Redirect to login
     handle_logout()
 
 # Function to create grayscale background while keeping the subject colored
@@ -236,7 +230,7 @@ if "text_sets" not in st.session_state:
             "text": "Your Custom Text",
             "font_size": 150,
             "font_color": "#FFFFFF",
-            "font_family": "Arial",
+            "font_family": "Arial Black",  # Default font set here
             "font_stroke": 2,
             "stroke_color": "#000000",
             "text_opacity": 1.0,
@@ -257,7 +251,7 @@ def add_text_set():
                 "text": "New Text",
                 "font_size": 150,
                 "font_color": "#FFFFFF",
-                "font_family": "Arial",
+                "font_family": "Arial Black",  # Default font set here
                 "font_stroke": 2,
                 "stroke_color": "#000000",
                 "text_opacity": 1.0,
@@ -274,7 +268,6 @@ def remove_text_set(index):
         st.warning("You have reached your limit of 2 image edits as a free user. Please upgrade your account to remove text sets.")
     else:
         st.session_state.text_sets.pop(index)
-        # Instead of rerunning, update session state and redraw
         st.session_state.text_sets = st.session_state.text_sets
 
 # Button to add a new text set
@@ -291,15 +284,16 @@ for i, text_set in enumerate(st.session_state.text_sets):
         text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}", disabled=disabled)
         text_set["font_family"] = st.selectbox(
             f"Font Family {i + 1}",
-            [f.replace(".ttf", "") for f in os.listdir(FONTS_FOLDER) if f.endswith(".ttf")],
+            available_fonts,  # Use available fonts list
             key=f"font_family_{i}",
-            disabled=disabled
+            disabled=disabled,
+            index=available_fonts.index("Arial Black") if "Arial Black" in available_fonts else 0,
         )
         text_set["text_transform"] = st.selectbox(
             f"Text Transform {i + 1}", ["none", "uppercase", "lowercase", "capitalize"], key=f"text_transform_{i}",
             disabled=disabled
         )
-        text_set["font_size"] = st.slider(f"Font Size {i + 1}", 10, 800, text_set["font_size"], key=f"font_size_{i}", disabled=disabled)
+        text_set["font_size"] = st.slider(f"Font Size {i + 1}", 10, 1200, text_set["font_size"], key=f"font_size_{i}", disabled=disabled)
         text_set["font_color"] = st.color_picker(f"Font Color {i + 1}", text_set["font_color"], key=f"font_color_{i}", disabled=disabled)
         text_set["font_stroke"] = st.slider(f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}", disabled=disabled)
         text_set["stroke_color"] = st.color_picker(f"Stroke Color {i + 1}", text_set["stroke_color"], key=f"stroke_color_{i}", disabled=disabled)
@@ -307,13 +301,13 @@ for i, text_set in enumerate(st.session_state.text_sets):
             f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}", disabled=disabled
         )
         text_set["rotation"] = st.slider(f"Rotate Text {i + 1}", 0, 360, text_set["rotation"], key=f"rotation_{i}", disabled=disabled)
-        text_set["x_position"] = st.slider(f"X Position {i + 1}", -600, 600, text_set["x_position"], key=f"x_position_{i}", disabled=disabled)
-        text_set["y_position"] = st.slider(f"Y Position {i + 1}", -600, 600, text_set["y_position"], key=f"y_position_{i}", disabled=disabled)
+        text_set["x_position"] = st.slider(f"X Position {i + 1}", -800, 800, text_set["x_position"], key=f"x_position_{i}", disabled=disabled)
+        text_set["y_position"] = st.slider(f"Y Position {i + 1}", -800, 800, text_set["y_position"], key=f"y_position_{i}", disabled=disabled)
 
 # Process the uploaded image
 if my_upload is not None:
     if my_upload.size > MAX_FILE_SIZE:
-        st.error("The uploaded file is too large. Please upload an image smaller than 10MB.")
+        st.error("The uploaded file is too large. Please upload an image smaller than 7MB.")
     else:
         if user_data["role"] == "free" and st.session_state.remaining_images <= 0:
             st.error("You have reached your limit of 2 image edits as a free user. Please upgrade your account.")
