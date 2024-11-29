@@ -13,9 +13,6 @@ UPGRADE_URL = "https://ghlsaaskits.com/upgrade-tbi"
 # Set up Streamlit page
 st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
 
-# Sidebar upload/download instructions
-st.sidebar.write("## Upload and download :gear:")
-
 MAX_FILE_SIZE = 7 * 1024 * 1024  # 10MB max file size
 
 # Ensure the fonts folder exists
@@ -26,7 +23,6 @@ if not os.path.exists(FONTS_FOLDER):
 # Load available fonts
 available_fonts = [f.replace(".ttf", "") for f in os.listdir(FONTS_FOLDER) if f.endswith(".ttf")]
 
-# Ensure "Arial Black" is in the available fonts list
 if "Arial Black" not in available_fonts:
     st.warning("Arial Black font is not available in the uploaded fonts folder. Please upload it to the 'fonts' folder.")
 
@@ -180,13 +176,13 @@ for i, text_set in enumerate(st.session_state.temp_text_sets):
         text_set["y_position"] = st.slider(f"Y Position {i + 1}", -800, 800, text_set["y_position"], key=f"y_position_{i}")
 
 # Confirm and Cancel buttons
-if st.sidebar.button("Confirm Changes"):
+if st.sidebar.button("Confirm Updates"):
     st.session_state.text_sets = st.session_state.temp_text_sets.copy()
-    st.success("Changes confirmed!")
+    st.success("Changes applied successfully!")
 
 if st.sidebar.button("Cancel Changes"):
     st.session_state.temp_text_sets = st.session_state.text_sets.copy()
-    st.info("Changes reverted to the previous state.")
+    st.info("Changes reverted to previous values.")
 
 # Render the processed image only if a file is uploaded
 if my_upload is not None:
