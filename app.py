@@ -16,7 +16,7 @@ ADMIN_DASHBOARD_URL = "https://app.ghlsaaskits.com/admin.php"
 st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
 
 # Sidebar upload/download instructions
-st.sidebar.write("## Upload and download :gear:")
+st.sidebar.write("## GHL SaasKits :gear:")
 
 MAX_FILE_SIZE = 7 * 1024 * 1024  # 7MB max file size
 
