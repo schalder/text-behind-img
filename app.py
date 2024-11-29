@@ -108,16 +108,6 @@ def handle_logout():
     hide_sidebar()
     redirect_to_login()
 
-# Validate user session
-user_data = validate_user()
-
-# Initialize session state for tracking remaining usage for free users
-if "remaining_images" not in st.session_state:
-    if user_data["role"] == "free":
-        st.session_state.remaining_images = int(user_data["remaining_images"])
-    else:
-        st.session_state.remaining_images = float('inf')  # Unlimited for Pro and Admin users
-
 # Function to update download count in the backend
 def update_download_count():
     try:
@@ -133,6 +123,13 @@ def update_download_count():
 # Function to check if the user has reached the download limit
 def has_reached_download_limit():
     return user_data["role"] == "free" and st.session_state.remaining_images <= 0
+
+# Validate user session
+user_data = validate_user()
+
+# Initialize session state for tracking remaining usage for free users
+if "remaining_images" not in st.session_state:
+    st.session_state.remaining_images = user_data.get("remaining_images", float('inf'))
 
 # Display user information and logout option
 st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['email']})")
