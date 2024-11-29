@@ -113,7 +113,21 @@ user_data = validate_user()
 
 # Initialize session state for tracking remaining usage for free users
 if "remaining_images" not in st.session_state:
-    st.session_state.remaining_images = int(user_data["remaining_images"])
+    # Safely fetch remaining_images from user_data
+    remaining_images = user_data.get("remaining_images", 0)
+
+    if user_data["role"] == "free":
+        # Ensure remaining_images is a valid integer or fallback to 0
+        try:
+            st.session_state.remaining_images = max(0, int(remaining_images))
+        except (ValueError, TypeError):
+            st.warning("Invalid remaining images value for free user. Setting to 0.")
+            st.session_state.remaining_images = 0
+    else:
+        # For Pro/Admin users, set remaining_images to unlimited
+        st.session_state.remaining_images = float('inf')  # Represents "unlimited"
+
+
 
 # Function to update download count in the backend
 def update_download_count():
