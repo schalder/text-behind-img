@@ -20,61 +20,7 @@ st.sidebar.write("## GHL SaasKits :gear:")
 
 MAX_FILE_SIZE = 7 * 1024 * 1024  # 7MB max file size
 
-# Theme toggle initialization
-if "theme" not in st.session_state:
-    st.session_state.theme = "dark"  # Default theme is dark
 
-# Dynamic CSS for themes
-def apply_theme():
-    if st.session_state.theme == "dark":
-        theme_css = """
-        <style>
-            body {
-                background-color: #121212;
-                color: #ffffff;
-            }
-            .css-1d391kg {
-                background-color: #121212;
-            }
-            .css-1aumxhk {
-                color: #ffffff;
-            }
-            .stButton>button {
-                background-color: #4CAF50;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                font-size: 16px;
-                cursor: pointer;
-            }
-        </style>
-        """
-    else:  # Light theme
-        theme_css = """
-        <style>
-            body {
-                background-color: #ffffff;
-                color: #000000;
-            }
-            .css-1d391kg {
-                background-color: #ffffff;
-            }
-            .css-1aumxhk {
-                color: #000000;
-            }
-            .stButton>button {
-                background-color: #007bff;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                font-size: 16px;
-                cursor: pointer;
-            }
-        </style>
-        """
-    st.markdown(theme_css, unsafe_allow_html=True)
-
-apply_theme()
 
 # Dark/Light mode toggle button
 st.sidebar.write("### Theme Switcher")
