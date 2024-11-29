@@ -10,6 +10,7 @@ VALIDATE_API_URL = "https://app.ghlsaaskits.com/text-behind-img/validate_api_key
 UPDATE_DOWNLOAD_COUNT_URL = "https://app.ghlsaaskits.com/text-behind-img/update_download_count.php"
 LOGIN_URL = "https://app.ghlsaaskits.com/text-behind-img/login.php"
 UPGRADE_URL = "https://ghlsaaskits.com/upgrade-tbi"
+ADMIN_DASHBOARD_URL = "https://app.ghlsaaskits.com/admin.php"
 
 # Set up Streamlit page
 st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
@@ -120,6 +121,10 @@ user_data = validate_user()
 # Initialize session state for tracking remaining usage for free users
 if "remaining_images" not in st.session_state:
     st.session_state.remaining_images = user_data["remaining_images"]
+
+# Logout button in the sidebar
+if st.sidebar.button("Logout"):
+    handle_logout()
 
 # Function to update download count in the backend
 def update_download_count():
@@ -273,7 +278,7 @@ if st.sidebar.button("Add Text Set"):
 for i, text_set in enumerate(st.session_state.text_sets):
     with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
         text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"])
-        text_set["font_family"] = st.selectbox(f"Font Family {i + 1}", available_fonts, key=f"font_family_{i}")
+        text_set["font_family"] = st.selectbox(f"Font Family {i + 1}", available_fonts, key=f"font_family_{i}", index=available_fonts.index("Arial Black") if "Arial Black" in available_fonts else 0)
         text_set["text_transform"] = st.selectbox(f"Text Transform {i + 1}", ["none", "uppercase", "lowercase", "capitalize"], key=f"text_transform_{i}")
         text_set["font_size"] = st.slider(f"Font Size {i + 1}", 10, 1200, text_set["font_size"], key=f"font_size_{i}")
         text_set["font_color"] = st.color_picker(f"Font Color {i + 1}", text_set["font_color"], key=f"font_color_{i}")
@@ -306,5 +311,24 @@ if my_upload:
                    </button>
                 </a>
             """, unsafe_allow_html=True)
+
+# Add Admin Dashboard button (visible only for admin users)
+if user_data["role"] == "admin":
+    st.markdown(f"""
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="{ADMIN_DASHBOARD_URL}" style="text-decoration: none;">
+               <button style="
+                   padding: 10px 20px; 
+                   background-color: #4CAF50; 
+                   color: white; 
+                   border: none; 
+                   border-radius: 5px; 
+                   font-size: 16px; 
+                   cursor: pointer;">
+                   Go to Admin Dashboard
+               </button>
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
 else:
     st.write("Upload an image to begin editing!")
