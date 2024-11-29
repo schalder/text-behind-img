@@ -30,120 +30,234 @@ available_fonts = [f.replace(".ttf", "") for f in os.listdir(FONTS_FOLDER) if f.
 if "Arial Black" not in available_fonts:
     st.warning("Arial Black font is not available in the uploaded fonts folder. Please upload it to the 'fonts' folder.")
 
+# Function to inject CSS for hiding the sidebar
+def hide_sidebar():
+    hide_sidebar_css = """
+    <style>
+        section.stSidebar.st-emotion-cache-1wqrzgl.eczjsme18 {
+            display: none;
+        }
+    </style>
+    """
+    st.markdown(hide_sidebar_css, unsafe_allow_html=True)
+
+# Redirect user to the login page
+def redirect_to_login():
+    st.experimental_set_query_params()  # Clear any query params
+    for key in st.session_state.keys():
+        del st.session_state[key]
+
+    st.markdown(f"""
+        <h4>You have been logged out. Please log in again.</h4>
+        <a href="{LOGIN_URL}" style="text-decoration: none;">
+           <button style="
+               padding: 10px 20px; 
+               background-color: #007bff; 
+               color: white; 
+               border: none; 
+               border-radius: 5px; 
+               font-size: 16px; 
+               cursor: pointer;">
+               Click here to login
+           </button>
+        </a>
+    """, unsafe_allow_html=True)
+    st.stop()
+
 # Function to convert an image to bytes for download
 def convert_image(img, format="PNG"):
     buf = BytesIO()
     img.save(buf, format=format)
     return buf.getvalue()
 
-# Process the image and return updated preview
+# Function to validate the user session using the API key
+def validate_user():
+    query_params = st.experimental_get_query_params()
+    api_key = query_params.get("api_key", [None])[0]
+    if not api_key:
+        hide_sidebar()
+        st.warning("Click the button below to login")
+        redirect_to_login()
+        st.stop()
+
+    try:
+        response = requests.post(VALIDATE_API_URL, json={"api_key": api_key})
+        if response.status_code == 200:
+            user_data = response.json()
+            required_fields = ["user_id", "name", "email", "role", "remaining_images"]
+            if not all(field in user_data for field in required_fields):
+                st.error("Invalid response from the server. Missing required fields.")
+                st.stop()
+            return user_data
+        elif response.status_code == 401:
+            hide_sidebar()
+            st.warning("Invalid or expired API key. Redirecting to login...")
+            redirect_to_login()
+            st.stop()
+        else:
+            st.error(f"Unexpected error: {response.text}. Please contact support.")
+            st.stop()
+    except Exception as e:
+        st.error(f"Unable to validate session: {e}. Please try again.")
+        st.stop()
+
+# Logout functionality
+def handle_logout():
+    st.experimental_set_query_params()
+    hide_sidebar()
+    redirect_to_login()
+
+# Validate user session
+user_data = validate_user()
+
+# Initialize session state for tracking remaining usage for free users
+if "remaining_images" not in st.session_state:
+    if user_data["role"] == "free":
+        st.session_state.remaining_images = int(user_data["remaining_images"])
+    else:
+        st.session_state.remaining_images = float('inf')  # Unlimited for Pro and Admin users
+
+# Display user information and logout option
+st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['email']})")
+st.sidebar.write(f"**Role:** {user_data['role'].capitalize()}")
+
+if st.sidebar.button("Logout"):
+    st.session_state.clear()
+    handle_logout()
+
+# Function to create grayscale background while keeping the subject colored
+def create_grayscale_with_subject(original_image, subject_image):
+    grayscale_background = ImageOps.grayscale(original_image).convert("RGBA")
+    subject_alpha_mask = subject_image.getchannel("A")
+    combined_image = Image.composite(subject_image, grayscale_background, subject_alpha_mask)
+    return combined_image
+
+# Function to process the uploaded image
 def process_image(upload, text_sets):
     try:
         original_image = Image.open(upload).convert("RGBA")
         subject_image = remove(original_image)
+        grayscale_with_subject = create_grayscale_with_subject(original_image, subject_image)
 
         text_layer = Image.new("RGBA", original_image.size, (255, 255, 255, 0))
+
         for text_set in text_sets:
-            font_path = os.path.join(FONTS_FOLDER, f"{text_set['font_family']}.ttf")
+            custom_text = text_set["text"]
+            font_size = text_set["font_size"]
+            font_color = text_set["font_color"]
+            font_family = text_set["font_family"]
+            font_stroke = text_set["font_stroke"]
+            stroke_color = text_set["stroke_color"]
+            text_opacity = text_set["text_opacity"]
+            rotation = text_set["rotation"]
+            x_position = text_set["x_position"]
+            y_position = text_set["y_position"]
+            text_transform = text_set["text_transform"]
+
+            if text_transform == "uppercase":
+                custom_text = custom_text.upper()
+            elif text_transform == "lowercase":
+                custom_text = custom_text.lower()
+            elif text_transform == "capitalize":
+                custom_text = custom_text.capitalize()
+
+            font_path = os.path.join(FONTS_FOLDER, f"{font_family}.ttf")
             try:
-                font = ImageFont.truetype(font_path, text_set['font_size'])
+                font = ImageFont.truetype(font_path, font_size)
             except Exception:
+                st.warning(f"Could not load font: {font_family}. Using default font.")
                 font = ImageFont.load_default()
 
-            draw = ImageDraw.Draw(text_layer)
-            r, g, b = tuple(int(text_set['font_color'][i:i+2], 16) for i in (1, 3, 5))
-            color = (r, g, b, int(255 * text_set['text_opacity']))
+            r, g, b = tuple(int(font_color[i:i+2], 16) for i in (1, 3, 5))
+            font_color_with_opacity = (r, g, b, int(255 * text_opacity))
 
-            sr, sg, sb = tuple(int(text_set['stroke_color'][i:i+2], 16) for i in (1, 3, 5))
-            stroke_color = (sr, sg, sb, int(255 * text_set['text_opacity']))
+            sr, sg, sb = tuple(int(stroke_color[i:i+2], 16) for i in (1, 3, 5))
+            stroke_color_with_opacity = (sr, sg, sb, int(255 * text_opacity))
 
-            draw.text(
-                (original_image.width / 2 + text_set['x_position'], original_image.height / 2 + text_set['y_position']),
-                text_set['text'],
-                fill=color,
+            text_img = Image.new("RGBA", text_layer.size, (255, 255, 255, 0))
+            text_draw = ImageDraw.Draw(text_img)
+
+            text_x = (original_image.width / 2) + x_position
+            text_y = (original_image.height / 2) + y_position
+
+            text_draw.text(
+                (text_x, text_y),
+                custom_text,
+                fill=font_color_with_opacity,
                 font=font,
-                stroke_width=text_set['font_stroke'],
-                stroke_fill=stroke_color,
                 anchor="mm",
+                stroke_width=font_stroke,
+                stroke_fill=stroke_color_with_opacity,
             )
 
-        combined_image = Image.alpha_composite(original_image.convert("RGBA"), text_layer)
+            rotated_text_img = text_img.rotate(rotation, resample=Image.BICUBIC, center=(text_x, text_y))
+            text_layer = Image.alpha_composite(text_layer, rotated_text_img)
 
-        return combined_image
+        combined = Image.alpha_composite(original_image.convert("RGBA"), text_layer)
+        combined = Image.alpha_composite(combined, subject_image.convert("RGBA"))
 
+        return combined, grayscale_with_subject, subject_image
     except Exception as e:
         st.error(f"An error occurred while processing the image: {str(e)}")
-        return None
+        return None, None, None
 
+# Initialize session state for managing text sets
+if "text_sets" not in st.session_state:
+    st.session_state.text_sets = [
+        {
+            "text": "Your Custom Text",
+            "font_size": 150,
+            "font_color": "#FFFFFF",
+            "font_family": "Arial Black",  # Default font
+            "font_stroke": 2,
+            "stroke_color": "#000000",
+            "text_opacity": 1.0,
+            "rotation": 0,
+            "x_position": 0,
+            "y_position": 0,
+            "text_transform": "none",
+        }
+    ]
 
-# File upload
-my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
+# Manage text customization
+if "temp_text_sets" not in st.session_state:
+    st.session_state.temp_text_sets = st.session_state.text_sets.copy()
 
-# Session state initialization
-if "original_text_sets" not in st.session_state:
-    st.session_state.original_text_sets = []
+def apply_changes():
+    st.session_state.text_sets = st.session_state.temp_text_sets.copy()
 
-if "working_text_sets" not in st.session_state:
-    st.session_state.working_text_sets = []
+def discard_changes():
+    st.session_state.temp_text_sets = st.session_state.text_sets.copy()
 
-if "preview_image" not in st.session_state:
-    st.session_state.preview_image = None
+# Upload and preview image
+uploaded_file = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
+if uploaded_file:
+    if uploaded_file.size > MAX_FILE_SIZE:
+        st.error("The uploaded file is too large. Please upload an image smaller than 7MB.")
+    else:
+        final_image, grayscale_image, removed_bg_image = process_image(uploaded_file, st.session_state.text_sets)
+        if final_image:
+            st.image(final_image, caption="Preview", use_column_width=True)
 
-# Reset to original text sets on cancel
-def cancel_changes():
-    st.session_state.working_text_sets = st.session_state.original_text_sets.copy()
+        # Display text customization options
+        st.sidebar.write("### Customize Text Sets")
+        for idx, text_set in enumerate(st.session_state.temp_text_sets):
+            with st.sidebar.expander(f"Text Set {idx + 1}", expanded=True):
+                text_set["text"] = st.text_input(f"Text", text_set["text"], key=f"text_{idx}")
+                text_set["font_size"] = st.slider(f"Font Size", 10, 300, text_set["font_size"], key=f"font_size_{idx}")
+                text_set["font_color"] = st.color_picker(f"Font Color", text_set["font_color"], key=f"font_color_{idx}")
+                text_set["font_stroke"] = st.slider(f"Font Stroke", 0, 10, text_set["font_stroke"], key=f"font_stroke_{idx}")
+                text_set["stroke_color"] = st.color_picker(f"Stroke Color", text_set["stroke_color"], key=f"stroke_color_{idx}")
+                text_set["text_opacity"] = st.slider(f"Opacity", 0.0, 1.0, text_set["text_opacity"], key=f"opacity_{idx}")
+                text_set["rotation"] = st.slider(f"Rotation", 0, 360, text_set["rotation"], key=f"rotation_{idx}")
+                text_set["x_position"] = st.slider(f"X Position", -500, 500, text_set["x_position"], key=f"x_position_{idx}")
+                text_set["y_position"] = st.slider(f"Y Position", -500, 500, text_set["y_position"], key=f"y_position_{idx}")
 
-# Apply changes and update preview
-def confirm_changes():
-    st.session_state.original_text_sets = st.session_state.working_text_sets.copy()
-    st.session_state.preview_image = process_image(my_upload, st.session_state.original_text_sets)
-
-# Initial setup
-if my_upload:
-    if not st.session_state.original_text_sets:
-        st.session_state.original_text_sets = [
-            {
-                "text": "Your Custom Text",
-                "font_size": 150,
-                "font_color": "#FFFFFF",
-                "font_family": "Arial Black",
-                "font_stroke": 2,
-                "stroke_color": "#000000",
-                "text_opacity": 1.0,
-                "rotation": 0,
-                "x_position": 0,
-                "y_position": 0,
-            }
-        ]
-        st.session_state.working_text_sets = st.session_state.original_text_sets.copy()
-        st.session_state.preview_image = process_image(my_upload, st.session_state.original_text_sets)
-
-# Sidebar customization controls
-if my_upload:
-    for idx, text_set in enumerate(st.session_state.working_text_sets):
-        with st.sidebar.expander(f"Text Set {idx + 1}", expanded=True):
-            text_set["text"] = st.text_input(f"Text {idx + 1}", text_set["text"], key=f"text_{idx}")
-            text_set["font_family"] = st.selectbox(
-                f"Font Family {idx + 1}", available_fonts, key=f"font_family_{idx}"
-            )
-            text_set["font_size"] = st.slider(f"Font Size {idx + 1}", 10, 300, text_set["font_size"], key=f"font_size_{idx}")
-            text_set["font_color"] = st.color_picker(f"Font Color {idx + 1}", text_set["font_color"], key=f"font_color_{idx}")
-            text_set["font_stroke"] = st.slider(f"Font Stroke {idx + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{idx}")
-            text_set["stroke_color"] = st.color_picker(f"Stroke Color {idx + 1}", text_set["stroke_color"], key=f"stroke_color_{idx}")
-            text_set["text_opacity"] = st.slider(f"Text Opacity {idx + 1}", 0.1, 1.0, text_set["text_opacity"], key=f"text_opacity_{idx}")
-            text_set["x_position"] = st.slider(f"X Position {idx + 1}", -500, 500, text_set["x_position"], key=f"x_position_{idx}")
-            text_set["y_position"] = st.slider(f"Y Position {idx + 1}", -500, 500, text_set["y_position"], key=f"y_position_{idx}")
-
-    # Confirm and Cancel buttons
-    col1, col2 = st.sidebar.columns(2)
-    with col1:
-        st.button("Confirm Updates", on_click=confirm_changes)
-    with col2:
-        st.button("Cancel", on_click=cancel_changes)
-
-# Preview area
-if st.session_state.preview_image:
-    st.write("## Preview")
-    st.image(st.session_state.preview_image, use_column_width=True)
-else:
-    st.write("Upload an image to start customizing!")
+        # Add confirm and cancel buttons
+        col1, col2 = st.sidebar.columns(2)
+        if col1.button("Confirm Updates"):
+            apply_changes()
+            st.experimental_rerun()
+        if col2.button("Cancel"):
+            discard_changes()
+            st.experimental_rerun()
