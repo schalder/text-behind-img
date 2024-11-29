@@ -123,6 +123,10 @@ if "remaining_images" not in st.session_state:
     st.session_state.remaining_images = user_data["remaining_images"]
 
 # Logout button in the sidebar
+# Display user information and logout option
+st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['email']})")
+st.sidebar.write(f"**Role:** {user_data['role'].capitalize()}")
+
 if st.sidebar.button("Logout"):
     handle_logout()
 
