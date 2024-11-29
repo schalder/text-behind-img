@@ -326,7 +326,7 @@ elif not st.session_state.get("image_processed", False):
 if user_data["role"] == "admin":
     st.markdown(f"""
         <div style="text-align: center; margin-top: 20px;">
-            <a href="{ADMIN_DASHBOARD_URL}" style="text-decoration: none;">
+            <a href="https://app.ghlsaaskits.com/text-behind-img/admin.php" style="text-decoration: none;">
                <button style="
                    padding: 10px 20px; 
                    background-color: #4CAF50; 
