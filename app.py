@@ -3,6 +3,7 @@ import requests
 from rembg import remove
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from io import BytesIO
+import copy
 import os
 
 # Backend URLs
@@ -196,19 +197,29 @@ def process_image(upload, text_sets):
         combined = Image.alpha_composite(original_image.convert("RGBA"), text_layer)
         combined = Image.alpha_composite(combined, subject_image.convert("RGBA"))
 
-        return combined, grayscale_with_subject, subject_image
+        st.write("## Final Image with Text 📝")
+        st.image(combined, use_column_width=True)
+
+        # Disable download buttons for free users who reached the limit
+        download_disabled = user_data["role"] == "free" and st.session_state.remaining_images <= 0
+
+        st.sidebar.download_button("Download Final Image", convert_image(combined), "final_image.png", "image/png", disabled=download_disabled)
+
     except Exception as e:
         st.error(f"An error occurred while processing the image: {str(e)}")
-        return None, None, None
 
-# Initialize session state for managing text sets
+# File upload
+my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
+
+st.sidebar.write("### Manage Text Sets")
+
 if "text_sets" not in st.session_state:
     st.session_state.text_sets = [
         {
             "text": "Your Custom Text",
             "font_size": 150,
             "font_color": "#FFFFFF",
-            "font_family": "Arial Black",  # Default font
+            "font_family": "Arial Black",  # Default font set here
             "font_stroke": 2,
             "stroke_color": "#000000",
             "text_opacity": 1.0,
@@ -219,45 +230,36 @@ if "text_sets" not in st.session_state:
         }
     ]
 
-# Manage text customization
-if "temp_text_sets" not in st.session_state:
-    st.session_state.temp_text_sets = st.session_state.text_sets.copy()
+if "editing_text_sets" not in st.session_state:
+    st.session_state.editing_text_sets = copy.deepcopy(st.session_state.text_sets)
 
-def apply_changes():
-    st.session_state.text_sets = st.session_state.temp_text_sets.copy()
+# Confirm button functionality
+def confirm_updates():
+    st.session_state.text_sets = copy.deepcopy(st.session_state.editing_text_sets)
 
-def discard_changes():
-    st.session_state.temp_text_sets = st.session_state.text_sets.copy()
+# Cancel button functionality
+def cancel_updates():
+    st.session_state.editing_text_sets = copy.deepcopy(st.session_state.text_sets)
 
-# Upload and preview image
-uploaded_file = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
-if uploaded_file:
-    if uploaded_file.size > MAX_FILE_SIZE:
-        st.error("The uploaded file is too large. Please upload an image smaller than 7MB.")
-    else:
-        final_image, grayscale_image, removed_bg_image = process_image(uploaded_file, st.session_state.text_sets)
-        if final_image:
-            st.image(final_image, caption="Preview", use_column_width=True)
+if my_upload is not None:
+    for i, text_set in enumerate(st.session_state.editing_text_sets):
+        with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
+            text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}")
+            text_set["font_family"] = st.selectbox(
+                f"Font Family {i + 1}",
+                available_fonts,
+                key=f"font_family_{i}",
+                index=available_fonts.index(text_set["font_family"]) if text_set["font_family"] in available_fonts else 0,
+            )
+            text_set["font_size"] = st.slider(f"Font Size {i + 1}", 10, 1200, text_set["font_size"], key=f"font_size_{i}")
+            text_set["font_stroke"] = st.slider(f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}")
+            text_set["text_opacity"] = st.slider(f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}")
+            text_set["rotation"] = st.slider(f"Rotate Text {i + 1}", 0, 360, text_set["rotation"], key=f"rotation_{i}")
+            text_set["x_position"] = st.slider(f"X Position {i + 1}", -800, 800, text_set["x_position"], key=f"x_position_{i}")
+            text_set["y_position"] = st.slider(f"Y Position {i + 1}", -800, 800, text_set["y_position"], key=f"y_position_{i}")
 
-        # Display text customization options
-        st.sidebar.write("### Customize Text Sets")
-        for idx, text_set in enumerate(st.session_state.temp_text_sets):
-            with st.sidebar.expander(f"Text Set {idx + 1}", expanded=True):
-                text_set["text"] = st.text_input(f"Text", text_set["text"], key=f"text_{idx}")
-                text_set["font_size"] = st.slider(f"Font Size", 10, 300, text_set["font_size"], key=f"font_size_{idx}")
-                text_set["font_color"] = st.color_picker(f"Font Color", text_set["font_color"], key=f"font_color_{idx}")
-                text_set["font_stroke"] = st.slider(f"Font Stroke", 0, 10, text_set["font_stroke"], key=f"font_stroke_{idx}")
-                text_set["stroke_color"] = st.color_picker(f"Stroke Color", text_set["stroke_color"], key=f"stroke_color_{idx}")
-                text_set["text_opacity"] = st.slider(f"Opacity", 0.0, 1.0, text_set["text_opacity"], key=f"opacity_{idx}")
-                text_set["rotation"] = st.slider(f"Rotation", 0, 360, text_set["rotation"], key=f"rotation_{idx}")
-                text_set["x_position"] = st.slider(f"X Position", -500, 500, text_set["x_position"], key=f"x_position_{idx}")
-                text_set["y_position"] = st.slider(f"Y Position", -500, 500, text_set["y_position"], key=f"y_position_{idx}")
+    st.sidebar.button("Confirm Updates", on_click=confirm_updates)
+    st.sidebar.button("Cancel Updates", on_click=cancel_updates)
 
-        # Add confirm and cancel buttons
-        col1, col2 = st.sidebar.columns(2)
-        if col1.button("Confirm Updates"):
-            apply_changes()
-            st.experimental_rerun()
-        if col2.button("Cancel"):
-            discard_changes()
-            st.experimental_rerun()
+    # Process the image only with confirmed changes
+    process_image(my_upload, st.session_state.text_sets)
