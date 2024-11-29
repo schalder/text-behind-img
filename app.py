@@ -17,7 +17,7 @@ st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
 # Sidebar upload/download instructions
 st.sidebar.write("## Upload and download :gear:")
 
-MAX_FILE_SIZE = 7 * 1024 * 1024  # 10MB max file size
+MAX_FILE_SIZE = 7 * 1024 * 1024  # 7MB max file size
 
 # Ensure the fonts folder exists
 FONTS_FOLDER = "fonts"
@@ -89,6 +89,12 @@ def validate_user():
             if not all(field in user_data for field in required_fields):
                 st.error("Invalid response from the server. Missing required fields.")
                 st.stop()
+            
+            # Convert "unlimited" to float('inf') for Pro/Admin users
+            if user_data["remaining_images"] == "unlimited":
+                user_data["remaining_images"] = float('inf')
+            else:
+                user_data["remaining_images"] = int(user_data["remaining_images"])
             return user_data
         elif response.status_code == 401:
             hide_sidebar()
@@ -113,21 +119,7 @@ user_data = validate_user()
 
 # Initialize session state for tracking remaining usage for free users
 if "remaining_images" not in st.session_state:
-    # Safely fetch remaining_images from user_data
-    remaining_images = user_data.get("remaining_images", 0)
-
-    if user_data["role"] == "free":
-        # Ensure remaining_images is a valid integer or fallback to 0
-        try:
-            st.session_state.remaining_images = max(0, int(remaining_images))
-        except (ValueError, TypeError):
-            st.warning("Invalid remaining images value for free user. Setting to 0.")
-            st.session_state.remaining_images = 0
-    else:
-        # For Pro/Admin users, set remaining_images to unlimited
-        st.session_state.remaining_images = float('inf')  # Represents "unlimited"
-
-
+    st.session_state.remaining_images = user_data["remaining_images"]
 
 # Function to update download count in the backend
 def update_download_count():
@@ -135,7 +127,9 @@ def update_download_count():
         response = requests.post(UPDATE_DOWNLOAD_COUNT_URL, json={"user_id": user_data["user_id"]})
         if response.status_code == 200:
             updated_data = response.json()
-            st.session_state.remaining_images = int(updated_data.get("remaining_images", st.session_state.remaining_images))
+            # Only update remaining_images for free users
+            if user_data["role"] == "free":
+                st.session_state.remaining_images = int(updated_data.get("remaining_images", st.session_state.remaining_images))
         else:
             st.error("Error updating download count. Please contact support.")
     except Exception as e:
