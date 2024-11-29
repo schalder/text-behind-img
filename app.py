@@ -122,10 +122,17 @@ if "remaining_images" not in st.session_state:
 def update_download_count():
     try:
         response = requests.post(UPDATE_DOWNLOAD_COUNT_URL, json={"user_id": user_data["user_id"]})
-        if response.status_code != 200:
+        if response.status_code == 200:
+            updated_data = response.json()
+            st.session_state.remaining_images = int(updated_data.get("remaining_images", st.session_state.remaining_images))
+        else:
             st.error("Error updating download count. Please contact support.")
     except Exception as e:
         st.error(f"Error updating download count: {e}")
+
+# Function to check if the user has reached the download limit
+def has_reached_download_limit():
+    return user_data["role"] == "free" and st.session_state.remaining_images <= 0
 
 # Display user information and logout option
 st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['email']})")
@@ -209,39 +216,24 @@ def process_image(upload, text_sets):
         st.write("## Final Image with Text 📝")
         st.image(combined, use_column_width=True)
 
-        # Disable download buttons for free users who reached the limit
-        download_disabled = user_data["role"] == "free" and st.session_state.remaining_images <= 0
-
-        if not download_disabled:
-            if st.sidebar.download_button(
-                "Download Final Image",
-                convert_image(combined),
-                "final_image.png",
-                "image/png",
-            ):
-                update_download_count()  # Update the download count on successful download
-
-        col1, col2 = st.columns(2)
-        col1.write("### Grayscale Background Image 🌑")
-        col1.image(grayscale_with_subject, use_column_width=True)
-        if not download_disabled:
-            if col1.download_button(
-                "Download Grayscale Background",
-                convert_image(grayscale_with_subject),
-                "grayscale_with_subject.png",
-                "image/png",
-            ):
-                update_download_count()
-
-        col2.write("### Background Removed Image 👤")
-        col2.image(subject_image, use_column_width=True)
-        if not download_disabled:
-            if col2.download_button(
-                "Download Removed Background",
-                convert_image(subject_image),
-                "background_removed.png",
-                "image/png",
-            ):
+        if has_reached_download_limit():
+            st.error("You have reached your limit of 2 image downloads as a free user. Please upgrade your account.")
+            st.markdown(f"""
+                <a href="{UPGRADE_URL}" style="text-decoration: none;">
+                   <button style="
+                       padding: 10px 20px; 
+                       background-color: #007bff; 
+                       color: white; 
+                       border: none; 
+                       border-radius: 5px; 
+                       font-size: 16px; 
+                       cursor: pointer;">
+                       Upgrade Account
+                   </button>
+                </a>
+            """, unsafe_allow_html=True)
+        else:
+            if st.sidebar.download_button("Download Final Image", convert_image(combined), "final_image.png", "image/png"):
                 update_download_count()
 
     except Exception as e:
@@ -250,93 +242,10 @@ def process_image(upload, text_sets):
 # File upload
 my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
 
-st.sidebar.write("### Manage Text Sets")
-if "text_sets" not in st.session_state:
-    st.session_state.text_sets = [
-        {
-            "text": "Your Custom Text",
-            "font_size": 150,
-            "font_color": "#FFFFFF",
-            "font_family": "Arial Black",
-            "font_stroke": 2,
-            "stroke_color": "#000000",
-            "text_opacity": 1.0,
-            "rotation": 0,
-            "x_position": 0,
-            "y_position": 0,
-            "text_transform": "none",
-        }
-    ]
-
-# Function to handle adding a new text set
-def add_text_set():
-    st.session_state.text_sets.append(
-        {
-            "text": "New Text",
-            "font_size": 150,
-            "font_color": "#FFFFFF",
-            "font_family": "Arial Black",
-            "font_stroke": 2,
-            "stroke_color": "#000000",
-            "text_opacity": 1.0,
-            "rotation": 0,
-            "x_position": 0,
-            "y_position": 0,
-            "text_transform": "none",
-        }
-    )
-
-# Function to handle removing a text set
-def remove_text_set(index):
-    st.session_state.text_sets.pop(index)
-
-# Button to add a new text set
-st.sidebar.button("Add Text Set", on_click=add_text_set)
-
-# Render each text set with collapsible editors
-for i, text_set in enumerate(st.session_state.text_sets):
-    with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
-        if st.button(f"Remove Text Set {i + 1}", key=f"remove_text_set_{i}"):
-            remove_text_set(i)
-            break
-
-        text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}")
-        text_set["font_family"] = st.selectbox(
-            f"Font Family {i + 1}", available_fonts, key=f"font_family_{i}"
-        )
-        text_set["text_transform"] = st.selectbox(
-            f"Text Transform {i + 1}", ["none", "uppercase", "lowercase", "capitalize"], key=f"text_transform_{i}"
-        )
-        text_set["font_size"] = st.slider(
-            f"Font Size {i + 1}", 10, 1200, text_set["font_size"], key=f"font_size_{i}"
-        )
-        text_set["font_color"] = st.color_picker(
-            f"Font Color {i + 1}", text_set["font_color"], key=f"font_color_{i}"
-        )
-        text_set["font_stroke"] = st.slider(
-            f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}"
-        )
-        text_set["stroke_color"] = st.color_picker(
-            f"Stroke Color {i + 1}", text_set["stroke_color"], key=f"stroke_color_{i}"
-        )
-        text_set["text_opacity"] = st.slider(
-            f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}"
-        )
-        text_set["rotation"] = st.slider(
-            f"Rotate Text {i + 1}", 0, 360, text_set["rotation"], key=f"rotation_{i}"
-        )
-        text_set["x_position"] = st.slider(
-            f"X Position {i + 1}", -800, 800, text_set["x_position"], key=f"x_position_{i}"
-        )
-        text_set["y_position"] = st.slider(
-            f"Y Position {i + 1}", -800, 800, text_set["y_position"], key=f"y_position_{i}"
-        )
-
-# Process the uploaded image
 if my_upload is not None:
     if my_upload.size > MAX_FILE_SIZE:
         st.error("The uploaded file is too large. Please upload an image smaller than 7MB.")
     else:
-        process_image(my_upload, st.session_state.text_sets)
+        process_image(my_upload, st.session_state.get("text_sets", []))
 else:
     st.write("Upload an image to begin editing!")
