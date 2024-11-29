@@ -3,7 +3,6 @@ import requests
 from rembg import remove
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from io import BytesIO
-import copy
 import os
 
 # Backend URLs
@@ -133,6 +132,28 @@ def create_grayscale_with_subject(original_image, subject_image):
     combined_image = Image.composite(subject_image, grayscale_background, subject_alpha_mask)
     return combined_image
 
+# Initialize text sets
+if "text_sets" not in st.session_state:
+    st.session_state.text_sets = [
+        {
+            "text": "Your Custom Text",
+            "font_size": 150,
+            "font_color": "#FFFFFF",
+            "font_family": "Arial Black",
+            "font_stroke": 2,
+            "stroke_color": "#000000",
+            "text_opacity": 1.0,
+            "rotation": 0,
+            "x_position": 0,
+            "y_position": 0,
+            "text_transform": "none",
+        }
+    ]
+
+# Maintain temporary state for text set changes
+if "temp_text_sets" not in st.session_state:
+    st.session_state.temp_text_sets = st.session_state.text_sets.copy()
+
 # Function to process the uploaded image
 def process_image(upload, text_sets):
     try:
@@ -199,67 +220,36 @@ def process_image(upload, text_sets):
 
         st.write("## Final Image with Text 📝")
         st.image(combined, use_column_width=True)
-
-        # Disable download buttons for free users who reached the limit
-        download_disabled = user_data["role"] == "free" and st.session_state.remaining_images <= 0
-
-        st.sidebar.download_button("Download Final Image", convert_image(combined), "final_image.png", "image/png", disabled=download_disabled)
-
     except Exception as e:
         st.error(f"An error occurred while processing the image: {str(e)}")
 
 # File upload
 my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
 
+# Manage Text Sets with Confirm/Cancel Buttons
 st.sidebar.write("### Manage Text Sets")
+for i, text_set in enumerate(st.session_state.temp_text_sets):
+    with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
+        text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}")
+        text_set["font_family"] = st.selectbox(f"Font Family {i + 1}", available_fonts, key=f"font_family_{i}")
+        text_set["font_size"] = st.slider(f"Font Size {i + 1}", 10, 1200, text_set["font_size"], key=f"font_size_{i}")
+        text_set["font_color"] = st.color_picker(f"Font Color {i + 1}", text_set["font_color"], key=f"font_color_{i}")
+        text_set["font_stroke"] = st.slider(f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}")
+        text_set["stroke_color"] = st.color_picker(f"Stroke Color {i + 1}", text_set["stroke_color"], key=f"stroke_color_{i}")
+        text_set["text_opacity"] = st.slider(f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], key=f"text_opacity_{i}")
+        text_set["rotation"] = st.slider(f"Rotation {i + 1}", 0, 360, text_set["rotation"], key=f"rotation_{i}")
+        text_set["x_position"] = st.slider(f"X Position {i + 1}", -800, 800, text_set["x_position"], key=f"x_position_{i}")
+        text_set["y_position"] = st.slider(f"Y Position {i + 1}", -800, 800, text_set["y_position"], key=f"y_position_{i}")
 
-if "text_sets" not in st.session_state:
-    st.session_state.text_sets = [
-        {
-            "text": "Your Custom Text",
-            "font_size": 150,
-            "font_color": "#FFFFFF",
-            "font_family": "Arial Black",  # Default font set here
-            "font_stroke": 2,
-            "stroke_color": "#000000",
-            "text_opacity": 1.0,
-            "rotation": 0,
-            "x_position": 0,
-            "y_position": 0,
-            "text_transform": "none",
-        }
-    ]
+if st.sidebar.button("Confirm Updates"):
+    st.session_state.text_sets = st.session_state.temp_text_sets.copy()
+    st.success("Changes applied successfully!")
 
-if "editing_text_sets" not in st.session_state:
-    st.session_state.editing_text_sets = copy.deepcopy(st.session_state.text_sets)
-
-# Confirm button functionality
-def confirm_updates():
-    st.session_state.text_sets = copy.deepcopy(st.session_state.editing_text_sets)
-
-# Cancel button functionality
-def cancel_updates():
-    st.session_state.editing_text_sets = copy.deepcopy(st.session_state.text_sets)
+if st.sidebar.button("Cancel Changes"):
+    st.session_state.temp_text_sets = st.session_state.text_sets.copy()
+    st.info("Changes reverted to previous values.")
 
 if my_upload is not None:
-    for i, text_set in enumerate(st.session_state.editing_text_sets):
-        with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
-            text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"], key=f"text_{i}")
-            text_set["font_family"] = st.selectbox(
-                f"Font Family {i + 1}",
-                available_fonts,
-                key=f"font_family_{i}",
-                index=available_fonts.index(text_set["font_family"]) if text_set["font_family"] in available_fonts else 0,
-            )
-            text_set["font_size"] = st.slider(f"Font Size {i + 1}", 10, 1200, text_set["font_size"], key=f"font_size_{i}")
-            text_set["font_stroke"] = st.slider(f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}")
-            text_set["text_opacity"] = st.slider(f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}")
-            text_set["rotation"] = st.slider(f"Rotate Text {i + 1}", 0, 360, text_set["rotation"], key=f"rotation_{i}")
-            text_set["x_position"] = st.slider(f"X Position {i + 1}", -800, 800, text_set["x_position"], key=f"x_position_{i}")
-            text_set["y_position"] = st.slider(f"Y Position {i + 1}", -800, 800, text_set["y_position"], key=f"y_position_{i}")
-
-    st.sidebar.button("Confirm Updates", on_click=confirm_updates)
-    st.sidebar.button("Cancel Updates", on_click=cancel_updates)
-
-    # Process the image only with confirmed changes
     process_image(my_upload, st.session_state.text_sets)
+else:
+    st.write("Upload an image to begin editing!")
