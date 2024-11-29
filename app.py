@@ -317,6 +317,9 @@ if my_upload:
                    </button>
                 </a>
             """, unsafe_allow_html=True)
+else:
+    st.write("Upload an image to begin editing!")
+
 
 # Add Admin Dashboard button (visible only for admin users)
 if user_data["role"] == "admin":
