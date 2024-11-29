@@ -20,17 +20,6 @@ st.sidebar.write("## GHL SaasKits :gear:")
 
 MAX_FILE_SIZE = 7 * 1024 * 1024  # 7MB max file size
 
-
-
-# Dark/Light mode toggle button
-st.sidebar.write("### Theme Switcher")
-if st.sidebar.button("Toggle Dark/Light Mode"):
-    st.session_state.theme = "light" if st.session_state.theme == "dark" else "dark"
-    apply_theme()
-
-
-
-
 # Ensure the fonts folder exists
 FONTS_FOLDER = "fonts"
 if not os.path.exists(FONTS_FOLDER):
