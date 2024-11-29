@@ -227,7 +227,7 @@ st.sidebar.write("### Manage Text Sets")
 if "text_sets" not in st.session_state:
     st.session_state.text_sets = [
         {
-            "text": "Your Custom Text",
+            "text": "Your Text",
             "font_size": 150,
             "font_color": "#FFFFFF",
             "font_family": "Arial Black",  # Default font set here
