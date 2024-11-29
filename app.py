@@ -13,9 +13,6 @@ UPGRADE_URL = "https://ghlsaaskits.com/upgrade-tbi"
 # Set up Streamlit page
 st.set_page_config(layout="wide", page_title="Image Subject and Text Editor")
 
-# Sidebar upload/download instructions
-st.sidebar.write("## Upload and download :gear:")
-
 MAX_FILE_SIZE = 7 * 1024 * 1024  # 10MB max file size
 
 # Ensure the fonts folder exists
@@ -26,43 +23,8 @@ if not os.path.exists(FONTS_FOLDER):
 # Load available fonts
 available_fonts = [f.replace(".ttf", "") for f in os.listdir(FONTS_FOLDER) if f.endswith(".ttf")]
 
-# Ensure "Arial Black" is in the available fonts list
 if "Arial Black" not in available_fonts:
     st.warning("Arial Black font is not available in the uploaded fonts folder. Please upload it to the 'fonts' folder.")
-
-# Function to inject CSS for hiding the sidebar
-def hide_sidebar():
-    hide_sidebar_css = """
-    <style>
-        section.stSidebar.st-emotion-cache-1wqrzgl.eczjsme18 {
-            display: none;
-        }
-    </style>
-    """
-    st.markdown(hide_sidebar_css, unsafe_allow_html=True)
-
-# Redirect user to the login page
-def redirect_to_login():
-    st.experimental_set_query_params()  # Clear any query params
-    for key in st.session_state.keys():
-        del st.session_state[key]
-
-    st.markdown(f"""
-        <h4>You have been logged out. Please log in again.</h4>
-        <a href="{LOGIN_URL}" style="text-decoration: none;">
-           <button style="
-               padding: 10px 20px; 
-               background-color: #007bff; 
-               color: white; 
-               border: none; 
-               border-radius: 5px; 
-               font-size: 16px; 
-               cursor: pointer;">
-               Click here to login
-           </button>
-        </a>
-    """, unsafe_allow_html=True)
-    st.stop()
 
 # Function to convert an image to bytes for download
 def convert_image(img, format="PNG"):
@@ -75,9 +37,7 @@ def validate_user():
     query_params = st.experimental_get_query_params()
     api_key = query_params.get("api_key", [None])[0]
     if not api_key:
-        hide_sidebar()
-        st.warning("Click the button below to login")
-        redirect_to_login()
+        st.error("API key missing. Please log in.")
         st.stop()
 
     try:
@@ -86,53 +46,22 @@ def validate_user():
             user_data = response.json()
             required_fields = ["user_id", "name", "email", "role", "remaining_images"]
             if not all(field in user_data for field in required_fields):
-                st.error("Invalid response from the server. Missing required fields.")
+                st.error("Invalid server response.")
                 st.stop()
             return user_data
         elif response.status_code == 401:
-            hide_sidebar()
-            st.warning("Invalid or expired API key. Redirecting to login...")
-            redirect_to_login()
+            st.error("Invalid or expired API key.")
             st.stop()
         else:
-            st.error(f"Unexpected error: {response.text}. Please contact support.")
+            st.error(f"Unexpected error: {response.text}.")
             st.stop()
     except Exception as e:
-        st.error(f"Unable to validate session: {e}. Please try again.")
+        st.error(f"Error validating session: {e}.")
         st.stop()
 
-# Logout functionality
-def handle_logout():
-    st.experimental_set_query_params()
-    hide_sidebar()
-    redirect_to_login()
-
-# Validate user session
 user_data = validate_user()
 
-# Initialize session state for tracking remaining usage for free users
-if "remaining_images" not in st.session_state:
-    if user_data["role"] == "free":
-        st.session_state.remaining_images = int(user_data["remaining_images"])
-    else:
-        st.session_state.remaining_images = float('inf')  # Unlimited for Pro and Admin users
-
-# Display user information and logout option
-st.sidebar.markdown(f"**Logged in as:** {user_data['name']} ({user_data['email']})")
-st.sidebar.write(f"**Role:** {user_data['role'].capitalize()}")
-
-if st.sidebar.button("Logout"):
-    st.session_state.clear()
-    handle_logout()
-
-# Function to create grayscale background while keeping the subject colored
-def create_grayscale_with_subject(original_image, subject_image):
-    grayscale_background = ImageOps.grayscale(original_image).convert("RGBA")
-    subject_alpha_mask = subject_image.getchannel("A")
-    combined_image = Image.composite(subject_image, grayscale_background, subject_alpha_mask)
-    return combined_image
-
-# Initialize text sets
+# Initialize text_sets (confirmed state) and temp_text_sets (temporary changes)
 if "text_sets" not in st.session_state:
     st.session_state.text_sets = [
         {
@@ -150,20 +79,25 @@ if "text_sets" not in st.session_state:
         }
     ]
 
-# Maintain temporary state for text set changes
 if "temp_text_sets" not in st.session_state:
     st.session_state.temp_text_sets = st.session_state.text_sets.copy()
 
-# Function to process the uploaded image
-def process_image(upload, text_sets):
+# Function to create grayscale background while keeping the subject colored
+def create_grayscale_with_subject(original_image, subject_image):
+    grayscale_background = ImageOps.grayscale(original_image).convert("RGBA")
+    subject_alpha_mask = subject_image.getchannel("A")
+    combined_image = Image.composite(subject_image, grayscale_background, subject_alpha_mask)
+    return combined_image
+
+# Function to process the uploaded image using the confirmed text_sets
+def process_image(upload):
     try:
         original_image = Image.open(upload).convert("RGBA")
         subject_image = remove(original_image)
         grayscale_with_subject = create_grayscale_with_subject(original_image, subject_image)
 
         text_layer = Image.new("RGBA", original_image.size, (255, 255, 255, 0))
-
-        for text_set in text_sets:
+        for text_set in st.session_state.text_sets:
             custom_text = text_set["text"]
             font_size = text_set["font_size"]
             font_color = text_set["font_color"]
@@ -226,7 +160,7 @@ def process_image(upload, text_sets):
 # File upload
 my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
 
-# Manage Text Sets with Confirm/Cancel Buttons
+# Sidebar for managing text sets
 st.sidebar.write("### Manage Text Sets")
 for i, text_set in enumerate(st.session_state.temp_text_sets):
     with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
@@ -241,6 +175,7 @@ for i, text_set in enumerate(st.session_state.temp_text_sets):
         text_set["x_position"] = st.slider(f"X Position {i + 1}", -800, 800, text_set["x_position"], key=f"x_position_{i}")
         text_set["y_position"] = st.slider(f"Y Position {i + 1}", -800, 800, text_set["y_position"], key=f"y_position_{i}")
 
+# Confirm and Cancel buttons
 if st.sidebar.button("Confirm Updates"):
     st.session_state.text_sets = st.session_state.temp_text_sets.copy()
     st.success("Changes applied successfully!")
@@ -249,7 +184,8 @@ if st.sidebar.button("Cancel Changes"):
     st.session_state.temp_text_sets = st.session_state.text_sets.copy()
     st.info("Changes reverted to previous values.")
 
+# Render the processed image only if a file is uploaded
 if my_upload is not None:
-    process_image(my_upload, st.session_state.text_sets)
+    process_image(my_upload)
 else:
     st.write("Upload an image to begin editing!")
