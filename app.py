@@ -340,5 +340,4 @@ if user_data["role"] == "admin":
             </a>
         </div>
     """, unsafe_allow_html=True)
-else:
-    st.write("Upload an image to begin editing!")
+
