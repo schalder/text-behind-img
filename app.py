@@ -74,7 +74,7 @@ def convert_image(img, format="PNG"):
 
 # Function to validate the user session using the API key
 def validate_user():
-    query_params = st.query_params()
+    query_params = st.experimental_get_query_params()
     api_key = query_params.get("api_key", [None])[0]
     if not api_key:
         hide_sidebar()
@@ -344,4 +344,3 @@ if user_data["role"] == "admin":
             </a>
         </div>
     """, unsafe_allow_html=True)
-
