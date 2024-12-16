@@ -74,7 +74,7 @@ def convert_image(img, format="PNG"):
 
 # Function to validate the user session using the API key
 def validate_user():
-    query_params = st.experimental_get_query_params()
+    query_params = st.query_params  # Updated to st.query_params
     api_key = query_params.get("api_key", [None])[0]
     if not api_key:
         hide_sidebar()
@@ -123,7 +123,6 @@ if "remaining_images" not in st.session_state:
     st.session_state.remaining_images = user_data["remaining_images"]
 
 # Logout button in the sidebar
-# Display user information and logout option
 st.sidebar.markdown(f"**Logged in as:** {user_data['name']}")
 st.sidebar.write(f"**Plan:** {user_data['role'].capitalize()} **Unlimited**")
 
@@ -136,7 +135,6 @@ def update_download_count():
         response = requests.post(UPDATE_DOWNLOAD_COUNT_URL, json={"user_id": user_data["user_id"]})
         if response.status_code == 200:
             updated_data = response.json()
-            # Only update remaining_images for free users
             if user_data["role"] == "free":
                 st.session_state.remaining_images = int(updated_data.get("remaining_images", st.session_state.remaining_images))
         else:
@@ -321,16 +319,13 @@ if my_upload:
             </a>
         """, unsafe_allow_html=True)
 elif not st.session_state.get("image_processed", False):
-    # Show this message only if no image is uploaded or processed
     st.write("Upload an image to begin editing!")
-
-
 
 # Add Admin Dashboard button (visible only for admin users)
 if user_data["role"] == "admin":
     st.markdown(f"""
         <div style="text-align: center; margin-top: 20px;">
-            <a href="https://app.ghlsaaskits.com/text-behind-img/admin.php" style="text-decoration: none;">
+            <a href="{ADMIN_DASHBOARD_URL}" style="text-decoration: none;">
                <button style="
                    padding: 10px 20px; 
                    background-color: #4CAF50; 
