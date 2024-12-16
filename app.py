@@ -45,10 +45,7 @@ def hide_sidebar():
 
 # Redirect user to the login page
 def redirect_to_login():
-    st.experimental_set_query_params()  # Clear any query params
-    for key in st.session_state.keys():
-        del st.session_state[key]
-
+    """Redirect the user to the login page by displaying a link."""
     st.markdown(f"""
         <h4>You have been logged out. Please log in again.</h4>
         <a href="{LOGIN_URL}" style="text-decoration: none;">
@@ -74,13 +71,12 @@ def convert_image(img, format="PNG"):
 
 # Function to validate the user session using the API key
 def validate_user():
-    query_params = st.query_params  # Updated to st.query_params
+    query_params = st.query_params  # Use the modern query_params API
     api_key = query_params.get("api_key", [None])[0]
     if not api_key:
         hide_sidebar()
         st.warning("Click the button below to login")
         redirect_to_login()
-        st.stop()
 
     try:
         response = requests.post(VALIDATE_API_URL, json={"api_key": api_key})
@@ -101,7 +97,6 @@ def validate_user():
             hide_sidebar()
             st.warning("Invalid or expired API key. Redirecting to login...")
             redirect_to_login()
-            st.stop()
         else:
             st.error(f"Unexpected error: {response.text}. Please contact support.")
             st.stop()
@@ -111,8 +106,8 @@ def validate_user():
 
 # Logout functionality
 def handle_logout():
-    st.experimental_set_query_params()
-    hide_sidebar()
+    """Handle user logout."""
+    st.session_state.clear()  # Clear session state to reset the user state
     redirect_to_login()
 
 # Validate user session
@@ -222,17 +217,6 @@ def process_image(upload, text_sets):
         if st.sidebar.download_button("Download Final Image", convert_image(combined), "final_image.png", "image/png", disabled=download_disabled):
             update_download_count()
 
-        col1, col2 = st.columns(2)
-        col1.write("### Grayscale Background Image 🌑")
-        col1.image(grayscale_with_subject, use_column_width=True)
-        if col1.download_button("Download Grayscale Background", convert_image(grayscale_with_subject), "grayscale_with_subject.png", "image/png", disabled=download_disabled):
-            update_download_count()
-
-        col2.write("### Background Removed Image 👤")
-        col2.image(subject_image, use_column_width=True)
-        if col2.download_button("Download Removed Background", convert_image(subject_image), "background_removed.png", "image/png", disabled=download_disabled):
-            update_download_count()
-
     except Exception as e:
         st.error(f"An error occurred while processing the image: {str(e)}")
 
@@ -241,61 +225,7 @@ my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpe
 
 st.sidebar.write("### Manage Text Sets")
 if "text_sets" not in st.session_state:
-    st.session_state.text_sets = [
-        {
-            "text": "Your Text",
-            "font_size": 150,
-            "font_color": "#FFFFFF",
-            "font_family": "Arial Black",  # Default font set here
-            "font_stroke": 2,
-            "stroke_color": "#000000",
-            "text_opacity": 1.0,
-            "rotation": 0,
-            "x_position": 0,
-            "y_position": 0,
-            "text_transform": "none",
-        }
-    ]
-
-def add_text_set():
-    st.session_state.text_sets.append(
-        {
-            "text": "New Text",
-            "font_size": 150,
-            "font_color": "#FFFFFF",
-            "font_family": "Arial Black",
-            "font_stroke": 2,
-            "stroke_color": "#000000",
-            "text_opacity": 1.0,
-            "rotation": 0,
-            "x_position": 0,
-            "y_position": 0,
-            "text_transform": "none",
-        }
-    )
-
-def remove_text_set(index):
-    st.session_state.text_sets.pop(index)
-
-if st.sidebar.button("Add Text Set"):
-    add_text_set()
-
-for i, text_set in enumerate(st.session_state.text_sets):
-    with st.sidebar.expander(f"Text Set {i + 1}", expanded=True):
-        text_set["text"] = st.text_input(f"Text {i + 1}", text_set["text"])
-        text_set["font_family"] = st.selectbox(f"Font Family {i + 1}", available_fonts, key=f"font_family_{i}", index=available_fonts.index("Arial Black") if "Arial Black" in available_fonts else 0)
-        text_set["text_transform"] = st.selectbox(f"Text Transform {i + 1}", ["none", "uppercase", "lowercase", "capitalize"], key=f"text_transform_{i}")
-        text_set["font_size"] = st.slider(f"Font Size {i + 1}", 10, 1200, text_set["font_size"], key=f"font_size_{i}")
-        text_set["font_color"] = st.color_picker(f"Font Color {i + 1}", text_set["font_color"], key=f"font_color_{i}")
-        text_set["font_stroke"] = st.slider(f"Font Stroke {i + 1}", 0, 10, text_set["font_stroke"], key=f"font_stroke_{i}")
-        text_set["stroke_color"] = st.color_picker(f"Stroke Color {i + 1}", text_set["stroke_color"], key=f"stroke_color_{i}")
-        text_set["text_opacity"] = st.slider(f"Text Opacity {i + 1}", 0.1, 1.0, text_set["text_opacity"], step=0.1, key=f"text_opacity_{i}")
-        text_set["rotation"] = st.slider(f"Rotate Text {i + 1}", 0, 360, text_set["rotation"], key=f"rotation_{i}")
-        text_set["x_position"] = st.slider(f"X Position {i + 1}", -800, 800, text_set["x_position"], key=f"x_position_{i}")
-        text_set["y_position"] = st.slider(f"Y Position {i + 1}", -800, 800, text_set["y_position"], key=f"y_position_{i}")
-        if st.button(f"Remove Text Set {i + 1}", key=f"remove_text_set_{i}"):
-            remove_text_set(i)
-            break
+    st.session_state.text_sets = []
 
 if my_upload:
     if my_upload.size > MAX_FILE_SIZE:
@@ -303,39 +233,4 @@ if my_upload:
     elif st.session_state.remaining_images > 0 or user_data["role"] != "free":
         process_image(my_upload, st.session_state.text_sets)
     else:
-        st.error("You have reached your limit of 2 image edits as a free user. Please upgrade your account.")
-        st.markdown(f"""
-            <a href="{UPGRADE_URL}" style="text-decoration: none;">
-               <button style="
-                   padding: 10px 20px; 
-                   background-color: #007bff; 
-                   color: white; 
-                   border: none; 
-                   border-radius: 5px; 
-                   font-size: 16px; 
-                   cursor: pointer;">
-                   Upgrade Account
-               </button>
-            </a>
-        """, unsafe_allow_html=True)
-elif not st.session_state.get("image_processed", False):
-    st.write("Upload an image to begin editing!")
-
-# Add Admin Dashboard button (visible only for admin users)
-if user_data["role"] == "admin":
-    st.markdown(f"""
-        <div style="text-align: center; margin-top: 20px;">
-            <a href="{ADMIN_DASHBOARD_URL}" style="text-decoration: none;">
-               <button style="
-                   padding: 10px 20px; 
-                   background-color: #4CAF50; 
-                   color: white; 
-                   border: none; 
-                   border-radius: 5px; 
-                   font-size: 16px; 
-                   cursor: pointer;">
-                   Go to Admin Dashboard
-               </button>
-            </a>
-        </div>
-    """, unsafe_allow_html=True)
+        st.error("You have reached your limit.")
