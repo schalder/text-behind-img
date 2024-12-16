@@ -45,7 +45,7 @@ def hide_sidebar():
 
 # Redirect user to the login page
 def redirect_to_login():
-    st.experimental_set_query_params()  # Clear any query params
+    """Redirect to the login page by showing a button."""
     for key in st.session_state.keys():
         del st.session_state[key]
 
@@ -74,13 +74,12 @@ def convert_image(img, format="PNG"):
 
 # Function to validate the user session using the API key
 def validate_user():
-    query_params = st.experimental_get_query_params()
+    query_params = st.query_params  # Use modern Streamlit method
     api_key = query_params.get("api_key", [None])[0]
     if not api_key:
         hide_sidebar()
         st.warning("Click the button below to login")
         redirect_to_login()
-        st.stop()
 
     try:
         response = requests.post(VALIDATE_API_URL, json={"api_key": api_key})
@@ -101,7 +100,6 @@ def validate_user():
             hide_sidebar()
             st.warning("Invalid or expired API key. Redirecting to login...")
             redirect_to_login()
-            st.stop()
         else:
             st.error(f"Unexpected error: {response.text}. Please contact support.")
             st.stop()
@@ -111,8 +109,8 @@ def validate_user():
 
 # Logout functionality
 def handle_logout():
-    st.experimental_set_query_params()
-    hide_sidebar()
+    """Clear session state and redirect to login."""
+    st.session_state.clear()
     redirect_to_login()
 
 # Validate user session
@@ -123,7 +121,6 @@ if "remaining_images" not in st.session_state:
     st.session_state.remaining_images = user_data["remaining_images"]
 
 # Logout button in the sidebar
-# Display user information and logout option
 st.sidebar.markdown(f"**Logged in as:** {user_data['name']}")
 st.sidebar.write(f"**Plan:** {user_data['role'].capitalize()} **Unlimited**")
 
@@ -136,7 +133,6 @@ def update_download_count():
         response = requests.post(UPDATE_DOWNLOAD_COUNT_URL, json={"user_id": user_data["user_id"]})
         if response.status_code == 200:
             updated_data = response.json()
-            # Only update remaining_images for free users
             if user_data["role"] == "free":
                 st.session_state.remaining_images = int(updated_data.get("remaining_images", st.session_state.remaining_images))
         else:
@@ -222,17 +218,6 @@ def process_image(upload, text_sets):
         download_disabled = user_data["role"] == "free" and st.session_state.remaining_images <= 0
 
         if st.sidebar.download_button("Download Final Image", convert_image(combined), "final_image.png", "image/png", disabled=download_disabled):
-            update_download_count()
-
-        col1, col2 = st.columns(2)
-        col1.write("### Grayscale Background Image 🌑")
-        col1.image(grayscale_with_subject, use_column_width=True)
-        if col1.download_button("Download Grayscale Background", convert_image(grayscale_with_subject), "grayscale_with_subject.png", "image/png", disabled=download_disabled):
-            update_download_count()
-
-        col2.write("### Background Removed Image 👤")
-        col2.image(subject_image, use_column_width=True)
-        if col2.download_button("Download Removed Background", convert_image(subject_image), "background_removed.png", "image/png", disabled=download_disabled):
             update_download_count()
 
     except Exception as e:
@@ -323,8 +308,6 @@ if my_upload:
 elif not st.session_state.get("image_processed", False):
     # Show this message only if no image is uploaded or processed
     st.write("Upload an image to begin editing!")
-
-
 
 # Add Admin Dashboard button (visible only for admin users)
 if user_data["role"] == "admin":
