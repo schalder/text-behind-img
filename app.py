@@ -74,18 +74,13 @@ def convert_image(img, format="PNG"):
 
 # Function to validate the user session using the API key
 def validate_user():
-    try:
-        # Try using the new Streamlit method first
-        query_params = st.query_params
-    except AttributeError:
-        # Fallback to the deprecated method if the new method fails
-        query_params = st.experimental_get_query_params()
-    
+    query_params = st.experimental_get_query_params()
     api_key = query_params.get("api_key", [None])[0]
     if not api_key:
         hide_sidebar()
         st.warning("Click the button below to login")
         redirect_to_login()
+        st.stop()
 
     try:
         response = requests.post(VALIDATE_API_URL, json={"api_key": api_key})
@@ -106,6 +101,7 @@ def validate_user():
             hide_sidebar()
             st.warning("Invalid or expired API key. Redirecting to login...")
             redirect_to_login()
+            st.stop()
         else:
             st.error(f"Unexpected error: {response.text}. Please contact support.")
             st.stop()
